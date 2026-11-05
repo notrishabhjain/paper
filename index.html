@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paper Trail</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="An interactive study route through nine AI papers, from Attention Is All You Need to FlashAttention, for product managers moving into AI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+<script>
+  /* Apply a saved theme before first paint to avoid a flash. */
+  try {
+    var t = JSON.parse(localStorage.getItem("papertrail:theme"));
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button type="button" class="icon-btn menu-btn" id="menu-btn" aria-label="Open the route menu" aria-expanded="false" aria-controls="rail">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a class="brand" href="#home">
+      <span class="brand-name">Paper Trail</span>
+      <span class="brand-tag">nine papers · one route</span>
+    </a>
+    <nav class="topnav" aria-label="Main">
+      <a href="#home" data-route="home">Route</a>
+      <a href="#method" data-route="method">Method</a>
+      <a href="#toolkit" data-route="toolkit">PM toolkit</a>
+      <a href="#glossary" data-route="glossary">Glossary</a>
+      <a href="#profile" data-route="profile">About you</a>
+    </nav>
+    <button type="button" class="icon-btn" id="theme-btn" aria-label="Switch between light and dark theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+  </div>
+</header>
+<div class="shell">
+  <aside class="rail" id="rail" aria-label="Stations"></aside>
+  <main id="main" tabindex="-1"></main>
+</div>
+<noscript><p style="padding:1rem">Paper Trail needs JavaScript for its interactive figures.</p></noscript>
+
+<script src="js/core.js"></script>
+<script src="js/content/glossary.js"></script>
+<script src="js/content/papers-a.js"></script>
+<script src="js/content/papers-b.js"></script>
+<script src="js/content/papers-c.js"></script>
+<script src="js/widgets/foundations.js"></script>
+<script src="js/widgets/transformer.js"></script>
+<script src="js/widgets/bert.js"></script>
+<script src="js/widgets/gpt.js"></script>
+<script src="js/widgets/chinchilla.js"></script>
+<script src="js/widgets/rlhf.js"></script>
+<script src="js/widgets/lora.js"></script>
+<script src="js/widgets/llama.js"></script>
+<script src="js/widgets/flash.js"></script>
+<script src="js/widgets/toolkit.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
