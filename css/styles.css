@@ -590,7 +590,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); }
 .tbl-wrap .tbl tr:last-child td { border-bottom: 0; }
 
 /* PM takeaways */
-.pm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.75rem; }
+.pm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr)); gap: 0.75rem; }
 .pm-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); padding: 1rem 1.1rem; display: grid; gap: 0.4rem; align-content: start; }
 .pm-card .q { font-weight: 600; }
 .pm-card p { font-size: var(--fs-sm); color: var(--ink-2); }
@@ -794,6 +794,37 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); }
 .stepper button b { font-size: var(--fs-sm); }
 .stepper button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .step-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+
+/* Today's session */
+.today-card {
+  margin-top: 1.75rem;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.25rem 1.2rem;
+  display: grid;
+  gap: 0.6rem;
+  box-shadow: var(--shadow);
+}
+.today-card h2 { font-size: var(--fs-xl); }
+.today-k { display: flex; justify-content: space-between; align-items: center; gap: 1rem; font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); }
+.today-k > span:first-child { background: var(--mark-bg); color: var(--ink); padding: 0.1rem 0.4rem; border-radius: 2px; }
+.today-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; margin-top: 0.9rem; padding: 0.6rem 0.8rem; border: 1px dashed var(--rule-strong); border-radius: var(--radius); background: var(--surface); }
+.today-inline .today-k { display: inline-flex; }
+.jump { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: -0.75rem; }
+.jump .chip { font-size: var(--fs-xs); padding: 0.2rem 0.6rem; }
+
+/* Build, interview, sessions */
+.build-goal { font-family: var(--font-display); font-size: var(--fs-lg); }
+.mini-h { font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); font-weight: 500; display: block; margin-bottom: 0.3rem; }
+.q-status { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ink-3); white-space: nowrap; }
+.q-status.got { color: var(--good); }
+.q-status.again { color: var(--warn); }
+.check-text { display: flex; justify-content: space-between; gap: 0.75rem; min-width: 0; }
+.check-min { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ink-3); white-space: nowrap; }
+.check.done .check-text { text-decoration: none; color: inherit; }
+.check.done .check-text > span:first-child { text-decoration: line-through; color: var(--ink-3); }
+.check.done .check-min { text-decoration: none; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {

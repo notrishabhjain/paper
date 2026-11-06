@@ -119,17 +119,47 @@
     }
   };
 
-  /* ---------- Progress ---------- */
-  P.checklistItems = [
-    { id: "read", label: "Read the 60-second version and the key concepts" },
-    { id: "play", label: "Played with every interactive figure on this page" },
-    { id: "paper", label: "Skimmed the original paper with the reading guide" },
-    { id: "lab1", label: "Step 1 · Reproduced the core result, even partially" },
-    { id: "lab2", label: "Step 2 · Ran it on my own dataset" },
-    { id: "lab3", label: "Step 3 · Compared 2–3 baselines" },
-    { id: "lab4", label: "Step 4 · Wrote down what failed and why" },
-    { id: "quiz", label: "Answered every self-check question" }
-  ];
+  /* Add fields to a station after its content file has loaded (used by the tailoring file). */
+  P.extendPaper = function (id, extra) {
+    var p = P.paper(id);
+    if (!p) return;
+    Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
+  };
+
+  /* ---------- Daily sessions ----------
+     Each station is split into short sessions (about 45 minutes) so it fits a daily study habit.
+     Lab steps take one or more sessions each, set per station in `labSessions`. */
+  P.SESSION_MIN = 45;
+  P.sessionsFor = function (p) {
+    if (p._sessions) return p._sessions;
+    var list = [
+      { id: "read", kind: "read", label: "Read the 60-second version and the key concepts", min: 40, target: "sec-sixty" },
+      { id: "play", kind: "play", label: "Play with the interactive figures", min: 40, target: "sec-see" },
+      { id: "paper", kind: "paper", label: "Read the code notes and the paper's guided sections", min: 45, target: "sec-code" }
+    ];
+    var counts = p.labSessions || [2, 2, 1, 1];
+    p.lab.steps.forEach(function (st, i) {
+      var n = counts[i] || 1;
+      for (var k = 1; k <= n; k++) {
+        list.push({ id: "lab" + (i + 1) + "-" + k, kind: "lab", step: i, label: "Lab step " + (i + 1) + " · " + st.name + (n > 1 ? " (session " + k + " of " + n + ")" : ""), min: 45, target: "sec-lab" });
+      }
+    });
+    if (p.build) {
+      var b = p.build.sessions || 1;
+      for (var j = 1; j <= b; j++) {
+        list.push({ id: "build-" + j, kind: "build", label: "Build: " + p.build.feature + (b > 1 ? " (session " + j + " of " + b + ")" : ""), min: 45, target: "sec-build" });
+      }
+    }
+    list.push({ id: "quiz", kind: "quiz", label: "Self-check quiz and interview practice", min: 30, target: "sec-quiz" });
+    list.push({ id: "publish", kind: "publish", label: "Publish: README results, failure log, and a short post", min: 45, target: "sec-publish" });
+    p._sessions = list;
+    return list;
+  };
+  P.minutesFor = function (p) {
+    return P.sessionsFor(p).reduce(function (a, s) { return a + s.min; }, 0);
+  };
+  P.hoursFor = function (p) { return Math.round((P.minutesFor(p) / 60) * 2) / 2; };
+
   P.progress = {
     get: function (paperId) { return P.store.get("progress:" + paperId, {}); },
     set: function (paperId, itemId, val) {
@@ -139,10 +169,26 @@
       document.dispatchEvent(new CustomEvent("progress-change"));
     },
     pct: function (paperId) {
-      var p = P.progress.get(paperId);
-      var done = P.checklistItems.filter(function (i) { return p[i.id]; }).length;
-      return done / P.checklistItems.length;
+      var paper = P.paper(paperId);
+      if (!paper) return 0;
+      var state = P.progress.get(paperId);
+      var list = P.sessionsFor(paper);
+      return list.filter(function (s) { return state[s.id]; }).length / list.length;
     }
+  };
+  /* The first unfinished session on the route, in station order. */
+  P.nextSession = function () {
+    var papers = P.sortedPapers();
+    var done = 0, total = 0, found = null;
+    papers.forEach(function (p) {
+      var state = P.progress.get(p.id);
+      P.sessionsFor(p).forEach(function (s, i, arr) {
+        total++;
+        if (state[s.id]) done++;
+        else if (!found) found = { paper: p, session: s, index: i, count: arr.length };
+      });
+    });
+    return { next: found, done: done, total: total };
   };
 
   /* ---------- Formatting ---------- */

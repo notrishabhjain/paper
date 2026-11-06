@@ -4,14 +4,18 @@
   var P = window.Portal;
   var h = P.h;
 
+  /* Standing instructions for every lab prompt. Claude Code writes the notebook into your portfolio
+     repository; you open it in Colab from GitHub and run it on the free GPU. */
   var PROMPT_PREAMBLE =
-    "You are my ML engineer. I am a product manager learning AI. I can read code but I do not write Python, so:\n" +
-    "- Work in ONE Google Colab notebook (free T4 GPU unless I say otherwise).\n" +
-    "- Before any code, give me a short plan (5–8 bullets) and wait for my OK.\n" +
-    "- Put a plain-English markdown cell above every code cell: what it does and why.\n" +
+    "You are my ML engineer, working in my portfolio repository through Claude Code. I am an IT project manager learning AI. I know Node.js, Postgres, and MongoDB; I can read Python but do not write it. So:\n" +
+    "- Write ONE Jupyter notebook at <folder>/lab-<step>.ipynb that runs top to bottom on the free Google Colab T4 GPU. I will open it in Colab from GitHub.\n" +
+    "- Free tools only: the Colab free tier and open models and datasets from Hugging Face. No paid APIs or keys.\n" +
+    "- Before writing code, give me a short plan (5–8 bullets) and wait for my OK.\n" +
+    "- Put a plain-English markdown cell above every code cell: what it does and why. Explain any math in words.\n" +
     "- Keep every run under 20 minutes. Print progress, then a short summary table at the end.\n" +
-    "- Fix random seeds so results are repeatable. Save charts as images.\n" +
-    "- When something fails, explain the error in one paragraph a non-engineer can follow, then fix it.\n\n" +
+    "- Fix random seeds so results repeat. Save charts as PNG files next to the notebook.\n" +
+    "- When something fails, explain the error in one paragraph a non-engineer can follow, then fix it.\n" +
+    "- Finish by adding the results table and three lessons learned to <folder>/README.md.\n\n" +
     "TASK\n";
 
   var EXPERIMENT_CARD =
@@ -28,7 +32,7 @@
     "Result (numbers + one chart): \n" +
     "What surprised me: \n" +
     "What I would try next: \n" +
-    "Decision this informs (as a PM): \n";
+    "Decision this informs (as a project manager): \n";
 
   var FAILURE_ENTRY =
     "FAILURE LOG ENTRY\n" +
@@ -41,8 +45,11 @@
     "How I would catch this earlier next time: \n" +
     "Cost of the failure (time, money, compute): \n";
 
+  function stationFolder(p) { return "stations/" + pad(p.num) + "-" + p.id; }
+
   /* ---------- Routing ---------- */
-  var main, rail, currentName = "home";
+  var main, rail, currentName = "home", labCtl = null;
+  var TITLES = { method: "Study method", toolkit: "Toolkit", glossary: "Glossary", profile: "About you", portfolio: "Portfolio", interviews: "Interviews" };
   function route() {
     var hash = (location.hash || "").replace(/^#/, "");
     var name = hash || "home";
@@ -50,6 +57,7 @@
     closePopover();
     if (rail) rail.classList.remove("open");
     P.clear(main);
+    labCtl = null;
     var page;
     var paper = P.paper(name);
     if (paper) page = renderPaper(paper);
@@ -58,16 +66,28 @@
     else if (name === "glossary") page = renderGlossary();
     else if (name.indexOf("term-") === 0) page = renderGlossary(name.slice(5));
     else if (name === "profile") page = renderProfile();
+    else if (name === "portfolio") page = renderPortfolio();
+    else if (name === "interviews") page = renderInterviews();
     else { page = renderHome(); name = "home"; }
     main.appendChild(page);
     main.appendChild(footer());
     currentName = name;
     updateNav(name);
     if (name.indexOf("term-") !== 0) window.scrollTo(0, 0);
-    document.title = (paper ? paper.short + " · " : name !== "home" ? cap(name) + " · " : "") + "Paper Trail";
+    document.title = (paper ? paper.short + " · " : TITLES[name] ? TITLES[name] + " · " : "") + "Paper Trail";
     P.store.set("lastRoute", name);
+    if (paper && P.pendingJump) {
+      var j = P.pendingJump;
+      P.pendingJump = null;
+      setTimeout(function () { jumpTo(j.target, j.step); }, 60);
+    }
   }
-  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  /* Scroll to a section on the current page (hash links would change the route). */
+  function jumpTo(target, step) {
+    if (target === "sec-lab" && typeof step === "number" && labCtl) labCtl.select(step);
+    var el = document.getElementById(target);
+    if (el) el.scrollIntoView({ block: "start" });
+  }
 
   function updateNav(name) {
     var current = name.indexOf("term-") === 0 ? "glossary" : name;
@@ -99,9 +119,11 @@
     });
     rail.appendChild(ol);
     rail.appendChild(h("nav", { class: "rail-extra", "aria-label": "More" },
-      h("a", { href: "#home", "data-route": "home", text: "Overview" }),
+      h("a", { href: "#home", "data-route": "home", text: "Overview and today's session" }),
       h("a", { href: "#method", "data-route": "method", text: "Study method" }),
-      h("a", { href: "#toolkit", "data-route": "toolkit", text: "PM toolkit" }),
+      h("a", { href: "#toolkit", "data-route": "toolkit", text: "AI project toolkit" }),
+      h("a", { href: "#portfolio", "data-route": "portfolio", text: "Portfolio and capstone" }),
+      h("a", { href: "#interviews", "data-route": "interviews", text: "Interview practice" }),
       h("a", { href: "#glossary", "data-route": "glossary", text: "Glossary" }),
       h("a", { href: "#profile", "data-route": "profile", text: "About you" })
     ));
@@ -110,8 +132,8 @@
   function pad(n) { return n < 10 ? "0" + n : String(n); }
 
   /* ---------- Shared bits ---------- */
-  function section(title, idx, children, intro) {
-    return h("section", { class: "section" },
+  function section(title, idx, children, intro, id) {
+    return h("section", { class: "section", id: id || null },
       h("h2", null, idx ? h("span", { class: "idx", text: idx }) : null, title),
       intro ? P.richEl("p", { class: "section-intro" }, intro) : null,
       children
@@ -124,32 +146,76 @@
     );
   }
   function overallPct() {
-    var ps = P.sortedPapers();
-    var sum = ps.reduce(function (a, p) { return a + P.progress.pct(p.id); }, 0);
-    return ps.length ? sum / ps.length : 0;
+    var ns = P.nextSession();
+    return ns.total ? ns.done / ns.total : 0;
+  }
+  function tableEl(head, rows, rich) {
+    return h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" },
+      h("thead", null, h("tr", null, head.map(function (c) { return h("th", { text: c }); }))),
+      h("tbody", null, rows.map(function (r) {
+        return h("tr", null, r.map(function (c) { return typeof c === "string" ? (rich ? P.richEl("td", null, c) : h("td", { text: c })) : h("td", null, c); }));
+      }))
+    ));
+  }
+
+  /* ---------- Today's session ---------- */
+  function nextSessionCard() {
+    var ns = P.nextSession();
+    var hours = P.store.get("hours-per-week", 5);
+    if (!ns.next) {
+      return h("section", { class: "today-card" },
+        h("div", { class: "today-k" }, h("span", { text: "Route complete" })),
+        h("h2", { text: "You have finished every session on the route." }),
+        h("p", { class: "small muted", text: "Polish your portfolio, finish the capstone documents for your work project, and keep practicing interview questions." }),
+        h("div", { class: "row" }, h("a", { class: "btn primary", href: "#portfolio", text: "Open the portfolio plan" }), h("a", { class: "btn", href: "#interviews", text: "Practice interviews" })));
+    }
+    var p = ns.next.paper, s = ns.next.session;
+    var remaining = 0;
+    P.sortedPapers().forEach(function (q) {
+      var st = P.progress.get(q.id);
+      P.sessionsFor(q).forEach(function (x) { if (!st[x.id]) remaining += x.min; });
+    });
+    var weeksLeft = Math.max(1, Math.ceil(remaining / (hours * 60)));
+    var go = h("a", { class: "btn primary", href: "#" + p.id, text: "Start this session" });
+    go.addEventListener("click", function () {
+      P.pendingJump = { target: s.target, step: s.step };
+      if (location.hash === "#" + p.id) { route(); }
+    });
+    var done = h("button", { type: "button", class: "btn", text: "Mark as done" });
+    done.addEventListener("click", function () { P.progress.set(p.id, s.id, true); route(); P.toast("Session marked as done"); });
+    return h("section", { class: "today-card", "aria-label": "Today's session" },
+      h("div", { class: "today-k" }, h("span", { text: "Today's session" }), h("span", { class: "mono", text: "≈ " + s.min + " min" })),
+      h("h2", { text: s.label }),
+      h("p", { class: "small muted", text: "Station " + pad(p.num) + " · " + p.short + " · session " + (ns.next.index + 1) + " of " + ns.next.count }),
+      h("div", { class: "row" }, go, done),
+      h("div", { class: "meter" }, h("i", { style: { width: (ns.done / ns.total) * 100 + "%" } })),
+      h("p", { class: "small muted", text: ns.done + " of " + ns.total + " sessions done · about " + weeksLeft + " week" + (weeksLeft === 1 ? "" : "s") + " left at " + hours + " hours a week" })
+    );
   }
 
   /* ---------- Home ---------- */
   function renderHome() {
     var page = h("div", { class: "page" });
     var papers = P.sortedPapers();
-    var labs = papers.length * 4;
+    var ns = P.nextSession();
+    var interviewCount = (P.interviewGeneral || []).length + papers.reduce(function (a, p) { return a + (p.interview || []).length; }, 0);
     page.appendChild(h("header", { class: "hero" },
-      h("div", { class: "eyebrow" }, h("span", { text: "A study route for product people" }), h("span", { text: "2017 → 2023" })),
+      h("div", { class: "eyebrow" }, h("span", { text: "A study route for AI project and program managers" }), h("span", { text: "2017 → 2023" })),
       h("h1", { html: "Nine papers built modern AI. Learn them <em>one station at a time.</em>" }),
-      P.richEl("p", { class: "dek" }, "Each station explains one paper in plain language, lets you poke at the core idea with interactive figures, teaches the vocabulary you will hear in meetings, and ends with a four-step lab you run through an AI coding assistant. No Python required, only curiosity and a free Google account."),
+      P.richEl("p", { class: "dek" }, "Each station explains one paper in plain language, lets you play with the core idea, and teaches the vocabulary you will hear in meetings. Then you run a four-step lab through Claude Code on a free GPU, add one feature to a Node.js app for your portfolio, and practice the interview questions AI project managers get asked. Short daily sessions, free tools only, no math beyond intuition."),
       h("div", { class: "hero-stats" },
         h("span", null, h("b", { text: String(papers.length) }), "stations"),
-        h("span", null, h("b", { text: String(P.glossary.length) }), "glossary terms"),
-        h("span", null, h("b", { text: String(labs) }), "lab steps"),
+        h("span", null, h("b", { text: String(ns.total) }), "sessions of ~45 min"),
+        h("span", null, h("b", { text: String(interviewCount) }), "interview questions"),
         h("span", null, h("b", { text: Math.round(overallPct() * 100) + "%" }), "of your route done")
       )
     ));
+    page.appendChild(nextSessionCard());
 
-    var route = h("ol", { class: "route" });
+    var routeList = h("ol", { class: "route" });
     papers.forEach(function (p) {
       var pct = P.progress.pct(p.id);
-      route.appendChild(h("li", null,
+      routeList.appendChild(h("li", null,
         h("a", { class: "route-stop" + (pct === 1 ? " done" : ""), href: "#" + p.id, style: { "--stage": P.stages[p.stage].color } },
           h("span", { class: "rdot", text: pad(p.num) }),
           h("span", { class: "route-body" },
@@ -158,7 +224,7 @@
               h("span", { class: "yr", text: p.year + " · " + p.org })
             ),
             h("p", { text: p.oneLiner }),
-            h("span", { class: "stage-chip", style: { "--stage": P.stages[p.stage].color }, text: P.stages[p.stage].name })
+            h("span", { class: "stage-chip", style: { "--stage": P.stages[p.stage].color }, text: P.stages[p.stage].name + " · " + P.sessionsFor(p).length + " sessions" + (p.build ? " · builds " + p.build.feature.toLowerCase() : "") })
           ),
           h("span", { class: "route-side" },
             h("span", { class: "pct", text: Math.round(pct * 100) + "% done" }),
@@ -167,25 +233,25 @@
         )
       ));
     });
-    page.appendChild(section("The route", null, route,
-      "Go in order. Each paper answers a question the previous one raised, and the labs reuse what you built at earlier stations."));
+    page.appendChild(section("The route", null, routeList,
+      "Go in order. Each paper answers a question the previous one raised, and each station adds one feature to the same app."));
+
+    page.appendChild(section("How every station works", null, h("div", { class: "loop-grid" },
+      loopCard("A", "Understand", "A 60-second summary, key concepts in plain words, and why it matters for the AI projects you will run."),
+      loopCard("B", "Play", "Interactive figures that let you change one thing and watch what happens."),
+      loopCard("C", "Build", "A four-step lab on a free Colab GPU, plus one Node.js feature for Delivery Copilot, all written by Claude Code from ready prompts."),
+      loopCard("D", "Prove", "Project-plan rows, a project document, interview questions, and a short public write-up for your portfolio.")
+    ), "Highlighted words like [[attention]] or [[parameter]] open a definition when you click them. Progress and notes are saved in this browser only."));
 
     page.appendChild(section("Where each paper fits", null, figure({
       w: "lifecycle",
       k: "Map",
       title: "The life of a large language model",
-      text: "Every LLM product you will manage moves through these stages. Click a stage to see what happens there, which papers explain it, and the decisions a PM owns."
+      text: "Every LLM project you manage moves through these stages. Click a stage to see what happens there, which papers explain it, and the decisions a project manager owns."
     }, "home")));
 
-    page.appendChild(section("How every station works", null, h("div", { class: "loop-grid" },
-      loopCard("A", "Understand", "A 60-second summary, the problem the authors faced, and why a PM should care."),
-      loopCard("B", "Play", "Interactive figures that let you change one thing and watch what happens."),
-      loopCard("C", "Speak", "Key concepts, highlighted vocabulary, and the numbers people quote in meetings."),
-      loopCard("D", "Build", "Four lab steps: reproduce, use your own data, compare baselines, log failures.")
-    ), "Highlighted words like [[attention]] or [[parameter]] open a definition when you click them. Your progress and notes are saved in this browser only."));
-
     page.appendChild(section("After the nine", null, nextPapersTable(),
-      "Once you finish the route, these papers fill the biggest remaining gaps for someone designing AI products."));
+      "Once you finish the route, these papers fill the biggest remaining gaps for someone leading AI projects."));
     return page;
   }
   function loopCard(n, title, text) {
@@ -193,18 +259,15 @@
   }
   function nextPapersTable() {
     var rows = [
+      ["Retrieval-Augmented Generation (RAG)", "Lewis et al., 2020", "How models look things up in your documents. Delivery Copilot is a RAG system; read this right after the route."],
       ["Scaling Laws for Neural Language Models", "Kaplan et al., 2020", "The first scaling laws. Read it to understand what Chinchilla corrected."],
-      ["Retrieval-Augmented Generation (RAG)", "Lewis et al., 2020", "How models look things up in your documents. Most enterprise LLM products are RAG systems."],
       ["Chain-of-Thought Prompting", "Wei et al., 2022", "Asking a model to reason step by step. The root of today's reasoning models."],
-      ["Direct Preference Optimization (DPO)", "Rafailov et al., 2023", "A simpler replacement for the RLHF step in InstructGPT. Widely used for fine-tuning."],
-      ["QLoRA", "Dettmers et al., 2023", "LoRA on a 4-bit quantized model, so a 65B model fine-tunes on a single GPU."],
-      ["Mixtral / Mixture of Experts", "Jiang et al., 2024", "Models that only use part of their parameters per token. Key to cost per token today."],
+      ["Direct Preference Optimization (DPO)", "Rafailov et al., 2023", "A simpler replacement for the RLHF steps in InstructGPT, and the method your Station 06 lab uses."],
+      ["QLoRA", "Dettmers et al., 2023", "LoRA on a 4-bit quantized model, so large models fine-tune on a single GPU."],
+      ["Mixtral / Mixture of Experts", "Jiang et al., 2024", "Models that use only part of their parameters per token. Key to cost per token today."],
       ["Constitutional AI", "Bai et al., 2022", "Using written principles and AI feedback instead of only human labels for alignment."]
     ];
-    return h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" },
-      h("thead", null, h("tr", null, h("th", { text: "Paper" }), h("th", { text: "Who, when" }), h("th", { text: "Why it matters to you" }))),
-      h("tbody", null, rows.map(function (r) { return h("tr", null, r.map(function (c) { return h("td", { text: c }); })); }))
-    ));
+    return tableEl(["Paper", "Who, when", "Why it matters to you"], rows);
   }
 
   /* ---------- Figure (widget host) ---------- */
@@ -236,6 +299,7 @@
     var page = h("article", { class: "page" });
     var link = paperLink(p);
     var stage = P.stages[p.stage];
+    var sessions = P.sessionsFor(p);
     page.appendChild(h("header", { class: "page-head" },
       h("div", { class: "eyebrow" },
         h("span", { text: "Station " + pad(p.num) }),
@@ -247,31 +311,52 @@
       P.richEl("p", { class: "dek" }, p.oneLiner),
       h("div", { class: "meta-row" },
         h("span", null, h("strong", { text: p.authors }), " · " + p.org),
-        h("span", null, "Study time ", h("strong", { text: "≈ " + p.hours + " hours" })),
+        h("span", null, h("strong", { text: sessions.length + " sessions" }), " · ≈ " + P.hoursFor(p) + " hours"),
         link ? h("a", { href: link, target: "_blank", rel: "noopener", text: "Open the paper ↗" }) : null
       )
     ));
 
-    // 1. The 60-second version
+    // Jump chips and this station's next session
+    var jumps = [["The idea", "sec-sixty"], ["Figures", "sec-see"], ["Concepts", "sec-concepts"], ["Lab", "sec-lab"], ["Build", "sec-build"], ["Project plan", "sec-plan"], ["Interview", "sec-interview"], ["Publish", "sec-publish"], ["Sessions", "sec-progress"]];
+    page.appendChild(h("nav", { class: "jump", "aria-label": "On this page" }, jumps.map(function (j) {
+      var b = h("button", { type: "button", class: "chip", text: j[0] });
+      b.addEventListener("click", function () { jumpTo(j[1]); });
+      return b;
+    })));
+    var state = P.progress.get(p.id);
+    var nextHere = sessions.filter(function (s) { return !state[s.id]; })[0];
+    if (nextHere) {
+      var goBtn = h("button", { type: "button", class: "btn small primary", text: "Go to it" });
+      goBtn.addEventListener("click", function () { jumpTo(nextHere.target, nextHere.step); });
+      page.appendChild(h("div", { class: "today-inline" },
+        h("span", { class: "today-k" }, h("span", { text: "Next session here" })),
+        h("span", { class: "small", text: nextHere.label + " · ≈ " + nextHere.min + " min" }),
+        goBtn));
+    }
+
+    var n = 0;
+    function idx() { n++; return pad(n); }
+
+    // The 60-second version
     var storyEl = h("div", { class: "story" },
       storyCell("1", "The problem", p.story.problem),
       storyCell("2", "The idea", p.story.idea),
       storyCell("3", "The result", p.story.result)
     );
-    var why = h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Why a PM should care" }), P.richEl("p", null, p.whyPM));
+    var why = h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Why it matters for AI projects" }), P.richEl("p", null, p.whyPM));
     var sixty = [storyEl, why];
     if (p.analogy) sixty.splice(1, 0, h("div", { class: "prose" }, P.richEl("p", null, "<b>Analogy.</b> " + p.analogy)));
-    page.appendChild(section("The 60-second version", "01", sixty));
+    page.appendChild(section("The 60-second version", idx(), sixty, null, "sec-sixty"));
 
-    // 2. See it
+    // Figures
     var nFig = 0;
-    page.appendChild(section("See it work", "02", p.figures.map(function (f) {
+    page.appendChild(section("See it work", idx(), p.figures.map(function (f) {
       nFig++;
       f.k = f.k || "Figure " + p.num + "." + nFig;
       return figure(f, p.id);
-    }), "Change the controls and watch the result. Figures marked as teaching models use made-up numbers to show the mechanism; the rest use numbers from the paper."));
+    }), "Change the controls and watch the result. Figures marked as teaching models use made-up numbers to show the mechanism; the rest use numbers from the paper.", "sec-see"));
 
-    // 3. Key concepts
+    // Key concepts
     var concepts = h("div", { class: "concepts" }, p.concepts.map(function (c, i) {
       return h("details", { class: "concept", open: i === 0 ? true : null },
         h("summary", null,
@@ -280,7 +365,7 @@
         ),
         h("div", { class: "concept-body" },
           h("div", null, h("span", { class: "k", text: "How it works" }), P.richEl("p", null, c.how)),
-          h("div", null, h("span", { class: "k", text: "Where you meet it in products" }), P.richEl("p", null, c.product))
+          h("div", null, h("span", { class: "k", text: "Where you meet it in projects" }), P.richEl("p", null, c.product))
         )
       );
     }));
@@ -288,36 +373,48 @@
       var t = P.term(id);
       return h("button", { type: "button", class: "chip", "data-term": id, text: t ? t.term : id });
     }));
-    page.appendChild(section("Key concepts", "03", [concepts, h("h3", { text: "Vocabulary from this paper" }), vocab]));
+    page.appendChild(section("Key concepts", idx(), [concepts, h("h3", { text: "Vocabulary from this paper" }), vocab], null, "sec-concepts"));
 
-    // 4. Read the code
-    if (p.code) page.appendChild(section("Read the code", "04", codeAnnot(p.code),
-      "You do not need to write this. Read it next to the plain-English notes so the code your AI assistant writes stops looking foreign."));
+    // Read the code
+    if (p.code) page.appendChild(section("Read the code", idx(), codeAnnot(p.code),
+      "You do not need to write this. Read it next to the plain-English notes so the code Claude Code writes for you stops looking foreign.", "sec-code"));
 
-    // 5. Numbers
-    page.appendChild(section("Numbers worth remembering", "05", h("div", { class: "numbers" }, p.numbers.map(function (n) {
-      return h("div", { class: "number" }, h("span", { class: "n", text: n.value }), P.richEl("span", { class: "l" }, n.label));
-    }))));
+    // Numbers
+    page.appendChild(section("Numbers worth remembering", idx(), h("div", { class: "numbers" }, p.numbers.map(function (x) {
+      return h("div", { class: "number" }, h("span", { class: "n", text: x.value }), P.richEl("span", { class: "l" }, x.label));
+    })), null, "sec-numbers"));
 
-    // 6. Lab
-    page.appendChild(section("Practice: the four-step lab", "06", renderLab(p), p.lab.summary));
+    // Lab
+    page.appendChild(section("Practice: the four-step lab", idx(), renderLab(p), p.lab.summary + " Each prompt tells Claude Code to write the notebook into <code>" + stationFolder(p) + "/</code> in your portfolio repository.", "sec-lab"));
 
-    // 7. System design takeaways
-    page.appendChild(section("System design takeaways", "07", h("div", { class: "pm-grid" }, p.pm.map(function (x) {
-      return h("div", { class: "pm-card" }, P.richEl("span", { class: "q" }, x.q), P.richEl("p", null, x.a));
-    })), "Decisions this paper helps you make, and questions it helps you ask your team."));
+    // Build
+    if (p.build) page.appendChild(section("Build it in your stack", idx(), renderBuild(p),
+      "One feature of Delivery Copilot, the Node.js app you grow into your capstone. Paste the prompt into Claude Code in your portfolio repository; everything runs free on your laptop. The <a href=\"#portfolio\">portfolio page</a> shows the whole plan.", "sec-build"));
 
-    // 8. Reading guide
-    page.appendChild(section("Read the paper", "08", h("div", { class: "prose" },
+    // Project plan
+    page.appendChild(section("Put it in your project plan", idx(), renderPlan(p),
+      "Work items you can copy into a real AI project plan, with typical effort for a small team, followed by the decisions this paper helps you make.", "sec-plan"));
+
+    // Reading guide
+    page.appendChild(section("Read the paper", idx(), h("div", { class: "prose" },
       h("ol", null, p.reading.map(function (r) { return P.richEl("li", null, r); })),
       link ? h("p", null, h("a", { class: "btn", href: link, target: "_blank", rel: "noopener", text: (p.arxiv ? "arXiv:" + p.arxiv : "Read the paper (PDF)") + " ↗" })) : null
-    ), "A guided first pass. Read the parts below, skip the rest, and come back to the details after the lab."));
+    ), "A guided first pass. Read the parts below, skip the rest, and come back to the details after the lab.", "sec-read"));
 
-    // 9. Quiz
-    page.appendChild(section("Self-check", "09", renderQuiz(p)));
+    // Quiz
+    page.appendChild(section("Self-check", idx(), renderQuiz(p), null, "sec-quiz"));
 
-    // 10. Progress + notes
-    page.appendChild(section("Your progress and notes", "10", [renderChecklist(p), renderNotes(p)]));
+    // Interview
+    if (p.interview) page.appendChild(section("Interview practice", idx(), renderInterviewList(p.interview.map(function (q, i) { return { key: p.id + i, q: q.q, a: q.a }; })),
+      "Questions an interviewer could ask an AI project manager about this paper's ideas. Answer out loud first, then open the guidance. <a href=\"#interviews\">Practice every question with a timer</a>.", "sec-interview"));
+
+    // Publish
+    page.appendChild(section("Publish it", idx(), renderPublish(p),
+      "Turn this station into a portfolio piece: a results README in your repository and a short public post.", "sec-publish"));
+
+    // Sessions and notes
+    page.appendChild(section("Your sessions and notes", idx(), [renderChecklist(p), renderNotes(p)],
+      "Tick a session when you finish it. The overview's “Today's session” card always points to the next one.", "sec-progress"));
 
     if (p.next) page.appendChild(h("div", { class: "callout", style: { marginTop: "2.5rem" } },
       h("span", { class: "callout-k", text: "What this unlocked" }), P.richEl("p", null, p.next)));
@@ -349,9 +446,10 @@
 
   function renderLab(p) {
     var lab = p.lab;
+    var counts = p.labSessions || [];
     var wrap = h("div", { class: "figure" });
     wrap.appendChild(h("div", { class: "lab-meta" },
-      h("span", null, "Time ", h("b", { text: lab.time })),
+      h("span", null, "Sessions ", h("b", { text: String(counts.reduce(function (a, b) { return a + b; }, 0) || lab.steps.length) })),
       h("span", null, "Compute ", h("b", { text: lab.compute })),
       h("span", null, "Tools ", h("b", { text: lab.tools }))
     ));
@@ -359,23 +457,25 @@
     var panels = h("div");
     var saved = P.store.get("labtab:" + p.id, 0);
     var buttons = [];
+    function select(i) {
+      buttons.forEach(function (x, j) { x.setAttribute("aria-selected", String(j === i)); panels.children[j].hidden = j !== i; });
+      P.store.set("labtab:" + p.id, i);
+    }
     lab.steps.forEach(function (st, i) {
       var tabId = "tab-" + p.id + "-" + i, panelId = "panel-" + p.id + "-" + i;
       var b = h("button", { type: "button", role: "tab", id: tabId, "aria-controls": panelId, "aria-selected": String(i === saved) },
-        h("span", { class: "tn", text: String(i + 1) }), st.name);
+        h("span", { class: "tn", text: String(i + 1) }), st.name, counts[i] ? h("span", { class: "tn", text: "· " + counts[i] + (counts[i] === 1 ? " session" : " sessions") }) : null);
       var panel = labPanel(st, p, i);
       panel.id = panelId;
       panel.setAttribute("role", "tabpanel");
       panel.setAttribute("aria-labelledby", tabId);
       panel.hidden = i !== saved;
-      b.addEventListener("click", function () {
-        buttons.forEach(function (x, j) { x.setAttribute("aria-selected", String(j === i)); panels.children[j].hidden = j !== i; });
-        P.store.set("labtab:" + p.id, i);
-      });
+      b.addEventListener("click", function () { select(i); });
       buttons.push(b);
       tabs.appendChild(b);
       panels.appendChild(panel);
     });
+    labCtl = { select: select };
     wrap.appendChild(tabs);
     wrap.appendChild(panels);
     return wrap;
@@ -385,23 +485,98 @@
     panel.appendChild(P.richEl("p", { class: "goal" }, st.goal));
     if (st.do) panel.appendChild(h("div", null, h("h4", { text: "Do this" }), h("ol", { class: "steps" }, st.do.map(function (d) { return P.richEl("li", null, d); }))));
     if (st.ideas) panel.appendChild(h("div", null, h("h4", { text: "Dataset ideas from your world" }), h("ul", null, st.ideas.map(function (d) { return P.richEl("li", null, d); }))));
-    if (st.table) {
-      var head = st.table[0], rows = st.table.slice(1);
-      panel.appendChild(h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" },
-        h("thead", null, h("tr", null, head.map(function (c) { return h("th", { text: c }); }))),
-        h("tbody", null, rows.map(function (r) { return h("tr", null, r.map(function (c) { return P.richEl("td", null, c); })); }))
-      )));
+    if (st.table) panel.appendChild(tableEl(st.table[0], st.table.slice(1), true));
+    if (st.prompt) {
+      var pre = PROMPT_PREAMBLE.replace(/<folder>/g, stationFolder(p)).replace("<step>", String(i + 1));
+      panel.appendChild(promptBox("Prompt for Claude Code", pre + st.prompt));
     }
-    if (st.prompt) panel.appendChild(promptBox("Prompt for your AI coding assistant", PROMPT_PREAMBLE + st.prompt));
     if (st.observe) panel.appendChild(h("div", null, h("h4", { text: "What to look for" }), h("ul", null, st.observe.map(function (d) { return P.richEl("li", null, d); }))));
     if (st.done) panel.appendChild(h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Done when" }), P.richEl("p", null, st.done)));
     return panel;
   }
   function promptBox(title, text) {
     var pre = h("pre", { text: text });
-    var btn = h("button", { type: "button", class: "btn small primary", text: "Copy prompt" });
+    var btn = h("button", { type: "button", class: "btn small primary", text: "Copy" });
     btn.addEventListener("click", function () { P.copy(text, btn, pre); });
     return h("div", { class: "prompt-box" }, h("div", { class: "prompt-head" }, h("span", { text: title }), btn), pre);
+  }
+
+  function renderBuild(p) {
+    var b = p.build;
+    var doc = P.templates && P.templates[b.doc];
+    var wrap = h("div", { class: "figure" });
+    wrap.appendChild(h("div", { class: "lab-meta" },
+      h("span", null, "Feature ", h("b", { text: b.feature })),
+      h("span", null, "Sessions ", h("b", { text: String(b.sessions || 1) })),
+      h("span", null, "Stack ", h("b", { text: "Node.js · Postgres · MongoDB · Ollama" }))
+    ));
+    wrap.appendChild(P.richEl("p", { class: "build-goal" }, b.what));
+    wrap.appendChild(h("p", { class: "small" }, h("b", { text: "Why this feature: " }), b.why));
+    wrap.appendChild(promptBox("Prompt for Claude Code", P.APP_PREAMBLE + b.prompt));
+    if (doc) {
+      wrap.appendChild(h("div", { style: { display: "grid", gap: "0.5rem" } },
+        h("h4", { class: "mini-h", text: "Project document for this station" }),
+        h("p", { class: "small" }, h("b", { text: doc.title + ". " }), "Draft it for Delivery Copilot and commit it to project-docs/. Then fill it in again for your real project at work, and keep that version private."),
+        promptBox(doc.title + " template", doc.text)));
+    }
+    return wrap;
+  }
+
+  function renderPlan(p) {
+    var parts = [];
+    if (p.delivery) {
+      var tsv = "Work item\tTypical effort\tWho\tWatch out for\n" + p.delivery.map(function (r) { return r.join("\t"); }).join("\n");
+      var copyBtn = h("button", { type: "button", class: "btn small", text: "Copy rows for a spreadsheet" });
+      copyBtn.addEventListener("click", function () { P.copy(tsv, copyBtn, null); });
+      parts.push(tableEl(["Work item", "Typical effort", "Who", "Watch out for"], p.delivery));
+      parts.push(h("div", { class: "row" }, copyBtn, h("span", { class: "small muted", text: "Pastes as four columns into Excel, Google Sheets, or a Jira import." })));
+    }
+    parts.push(h("h3", { text: "Decisions this paper informs" }));
+    parts.push(h("div", { class: "pm-grid" }, p.pm.map(function (x) {
+      return h("div", { class: "pm-card" }, P.richEl("span", { class: "q" }, x.q), P.richEl("p", null, x.a));
+    })));
+    return parts;
+  }
+
+  function renderInterviewList(items) {
+    var status = P.store.get("interview-status", {});
+    return h("div", { class: "concepts" }, items.map(function (q) {
+      var st = status[q.key];
+      return h("details", { class: "concept" },
+        h("summary", null,
+          h("span", null, h("span", { class: "c-name", text: q.q }), q.label ? h("span", { class: "c-plain", text: q.label }) : null),
+          h("span", { class: "q-status" + (st ? " " + st : ""), text: st === "got" ? "✓ confident" : st === "again" ? "↻ practice" : "›" })
+        ),
+        h("div", { style: { padding: "0 1.1rem 1rem" } },
+          h("span", { class: "mini-h", text: "A strong answer covers" }),
+          h("ul", { class: "small" }, q.a.map(function (x) { return h("li", { text: x }); }))));
+    }));
+  }
+
+  function renderPublish(p) {
+    var t = P.portfolioTemplates || {};
+    var folder = stationFolder(p);
+    var readme = (t.readme || "").replace("NN", pad(p.num)).replace("PAPER", p.short);
+    var post = (t.post || "").replace("HOOK: one surprising result in one line", (p.post || "HOOK") + "  (rewrite this with your own result)").replace("PAPER", p.title).replace("YEAR", String(p.year));
+    var draftPrompt = "Read the notebooks, charts, experiment-card.md, and failure-log.md in " + folder + "/. Then:\n" +
+      "1. Write " + folder + "/README.md using the template below. Use only numbers that appear in the notebooks, and mark anything you are unsure of with TODO.\n" +
+      "2. Draft a 150–200 word post for LinkedIn in my voice: plain, specific, no hype, one number, one failure, one lesson for running AI projects.\n" +
+      "3. Add a row for this station to the progress table in the repository's top-level README.md.\n" +
+      "Do not include confidential or personal data.\n\nTEMPLATE\n" + readme;
+    return [
+      h("div", { class: "pm-grid" },
+        h("div", { class: "pm-card" }, h("span", { class: "q", text: "Commit to your portfolio" }), h("ul", { class: "small" },
+          h("li", null, "Notebooks and charts in ", h("code", { text: folder + "/" })),
+          h("li", { text: "README with the results table and what failed" }),
+          h("li", { text: "Experiment card and failure log" }),
+          p.build ? h("li", { text: "The Delivery Copilot feature: " + p.build.feature } ) : null,
+          p.build && P.templates[p.build.doc] ? h("li", { text: "The project document: " + P.templates[p.build.doc].title }) : null)),
+        h("div", { class: "pm-card" }, h("span", { class: "q", text: "Post idea" }), h("p", { text: "“" + (p.post || "") + "”" }),
+          h("p", { class: "small muted", text: "Lead with your own number or failure, keep it under 200 words, and link the repository." }))
+      ),
+      promptBox("Prompt for Claude Code: draft the write-up", draftPrompt),
+      promptBox("Post template", post)
+    ];
   }
 
   function renderQuiz(p) {
@@ -418,9 +593,6 @@
           answered[qi] = oi;
           P.store.set("quiz:" + p.id, answered);
           paint();
-          if (Object.keys(answered).length === p.quiz.length) {
-            P.progress.set(p.id, "quiz", true);
-          }
         });
         opts.appendChild(b);
         return b;
@@ -449,18 +621,21 @@
     var wrap = h("div", { class: "checklist" });
     var meter = h("i");
     var label = h("span", { class: "small muted" });
+    var sessions = P.sessionsFor(p);
     function paintMeter() {
-      var pct = P.progress.pct(p.id);
-      meter.style.width = pct * 100 + "%";
-      label.textContent = Math.round(pct * 100) + "% of this station done";
+      var st = P.progress.get(p.id);
+      var done = sessions.filter(function (s) { return st[s.id]; }).length;
+      meter.style.width = (done / sessions.length) * 100 + "%";
+      label.textContent = done + " of " + sessions.length + " sessions done on this station";
     }
     var state = P.progress.get(p.id);
-    P.checklistItems.forEach(function (item) {
-      var id = "chk-" + p.id + "-" + item.id;
-      var input = h("input", { type: "checkbox", id: id, checked: !!state[item.id] });
-      var row = h("label", { class: "check" + (state[item.id] ? " done" : ""), for: id }, input, h("span", { text: item.label }));
+    sessions.forEach(function (s) {
+      var id = "chk-" + p.id + "-" + s.id;
+      var input = h("input", { type: "checkbox", id: id, checked: !!state[s.id] });
+      var row = h("label", { class: "check" + (state[s.id] ? " done" : ""), for: id }, input,
+        h("span", { class: "check-text" }, h("span", { text: s.label }), h("span", { class: "check-min", text: s.min + " min" })));
       input.addEventListener("change", function () {
-        P.progress.set(p.id, item.id, input.checked);
+        P.progress.set(p.id, s.id, input.checked);
         row.classList.toggle("done", input.checked);
         paintMeter();
       });
@@ -507,63 +682,76 @@
     page.appendChild(h("header", { class: "page-head" },
       h("div", { class: "eyebrow" }, h("span", { text: "How to study" })),
       h("h1", { text: "The study method" }),
-      P.richEl("p", { class: "dek" }, "Reading a paper tells you what the authors claim. Running a small version of it tells you what is true, what is fragile, and what it costs. That second kind of knowledge is what lets a PM push back, estimate, and design.")
+      P.richEl("p", { class: "dek" }, "Reading a paper tells you what the authors claim. Running a small version of it tells you what is true, what is fragile, and what it costs. That second kind of knowledge is what lets an AI project manager estimate, spot risk early, and push back with evidence.")
     ));
 
-    page.appendChild(section("The four-step loop", "01", h("div", { class: "loop-grid" },
-      methodCard("STEP 1", "Reproduce, even partially", "Rebuild the paper's core result at toy scale. You will not match the paper's numbers, and that is fine.", "Teaches you what is essential versus incidental, and how far a demo is from production."),
-      methodCard("STEP 2", "Use your own dataset", "Swap the paper's benchmark for data from your world: tickets, PRDs, reviews, release notes.", "Benchmarks flatter models. Your data shows the real gaps, and data prep is where most AI projects slip."),
-      methodCard("STEP 3", "Compare 2–3 baselines", "Put the fancy method next to something simple and something cheap, using the same data and metric.", "\"Is it better than a keyword rule?\" is the most valuable question an AI PM asks. Baselines answer it."),
-      methodCard("STEP 4", "Document what failed and why", "Keep a failure log: what you tried, what broke, the root cause, and the fix.", "Your failure log becomes your risk register. It is also the best interview material you will have.")
-    ), "Every station's lab follows the same four steps, so by the end you will have run this loop nine times."));
+    page.appendChild(section("Your daily rhythm", "01", h("div", { class: "loop-grid" },
+      methodCard("START · 2 MIN", "Open today's session", "The overview's “Today's session” card picks up exactly where you stopped and jumps to the right part of the station.", null),
+      methodCard("DO · 35–40 MIN", "One session, one thing", "Read, play with figures, run one lab step, or build one feature. Stop at the session boundary even if you could keep going.", null),
+      methodCard("CLOSE · 5 MIN", "Tick it and write two lines", "Mark the session done, and note one thing you learned or one thing that failed in the station's notes box.", null),
+      methodCard("WEEKLY · OPTIONAL", "Catch up or publish", "Use a free weekend slot for a session you skipped, or to polish the station's README and post.", null)
+    ), "The route is about " + Math.round(P.sortedPapers().reduce(function (a, p) { return a + P.minutesFor(p); }, 0) / 60) + " hours, split into " + P.nextSession().total + " sessions of about 45 minutes. One a day is roughly five hours a week."));
 
-    page.appendChild(section("Working with an AI coding assistant", "02", [
+    page.appendChild(section("The four-step loop", "02", h("div", { class: "loop-grid" },
+      methodCard("STEP 1", "Reproduce, even partially", "Rebuild the paper's core result at toy scale. You will not match the paper's numbers, and that is fine.", "Teaches you what is essential versus incidental, and how far a demo is from production."),
+      methodCard("STEP 2", "Use your own dataset", "Swap the paper's benchmark for data from your world: tickets, status reports, requirements, release notes.", "Benchmarks flatter models. Your data shows the real gaps, and data preparation is where most AI projects slip."),
+      methodCard("STEP 3", "Compare 2–3 baselines", "Put the fancy method next to something simple and something cheap, using the same data and metric.", "“Is it better than a keyword rule?” is the most valuable question in an AI project review. Baselines answer it."),
+      methodCard("STEP 4", "Document what failed and why", "Keep a failure log: what you tried, what broke, the root cause, and the fix.", "Your failure log becomes your risk register, and your best interview material.")
+    ), "Every station's lab follows the same four steps, so by the end you will have run this loop ten times."));
+
+    page.appendChild(section("Working with Claude Code", "03", [
+      h("ol", { class: "steps" },
+        P.richEl("li", null, "Create a public GitHub repository for your portfolio (layout on the <a href=\"#portfolio\">portfolio page</a>), clone it, and open Claude Code in it."),
+        P.richEl("li", null, "Copy a lab prompt from a station and paste it into Claude Code. Read its plan, change anything you disagree with, then approve."),
+        P.richEl("li", null, "Claude Code writes the notebook into <code>stations/NN-name/</code>. Commit and push."),
+        P.richEl("li", null, "Open <code>colab.research.google.com</code>, choose the GitHub tab, and pick the notebook. Set Runtime → Change runtime type → T4 GPU, then Run all."),
+        P.richEl("li", null, "If a cell fails, paste the error back into Claude Code, ask for a plain-English explanation first, then the fix. Push and re-run. Log the failure."),
+        P.richEl("li", null, "In Colab, use File → Save a copy in GitHub to keep the outputs. Fill in the experiment card, then use the station's publish prompt to draft the README.")
+      ),
       h("div", { class: "two-col" },
         h("div", { class: "pm-card" },
-          h("span", { class: "q", text: "You are the PM. The assistant is the engineer." }),
+          h("span", { class: "q", text: "You are the project manager. Claude Code is the engineer." }),
           h("ul", { class: "small" },
-            h("li", { text: "Write the task like a ticket: goal, data, constraints, acceptance criteria." }),
+            h("li", { text: "Write each task like a ticket: goal, data, constraints, acceptance criteria." }),
             h("li", { text: "Ask for a plan before code. Approve or change it." }),
-            h("li", { text: "Ask it to explain each cell in plain English. Ask why, not only what." }),
-            h("li", { text: "Make it state assumptions: data size, run time, cost." }),
+            h("li", { text: "Ask it to explain each step in plain English. Ask why, not only what." }),
+            h("li", { text: "Make it state assumptions: data size, run time, memory." }),
             h("li", { text: "Keep runs short. Ten 2-minute runs teach more than one 20-minute run." })
           )
         ),
         h("div", { class: "pm-card" },
-          h("span", { class: "q", text: "Questions that keep the assistant honest" }),
+          h("span", { class: "q", text: "Questions that keep the engineer honest" }),
           h("ul", { class: "small" },
             h("li", { text: "How do I know this number is right? What would a bug look like?" }),
             h("li", { text: "Is the test set ever seen during training?" }),
             h("li", { text: "What is the simplest baseline, and how does it score?" }),
             h("li", { text: "Which settings did you choose, and which did the paper use?" }),
-            h("li", { text: "What would change if we had 10× the data? 10× the budget?" })
+            h("li", { text: "What would change with 10× the data, or 10× the users?" })
           )
         )
       ),
-      promptBox("The standing instructions added to every lab prompt", PROMPT_PREAMBLE + "(the station's task goes here)")
-    ], "Each lab gives you a prompt to paste into Claude, Claude Code, or a similar assistant. The prompt starts with the standing instructions below."));
+      promptBox("Standing instructions at the top of every lab prompt", PROMPT_PREAMBLE.replace(/<folder>/g, "stations/NN-name").replace("<step>", "N") + "(the station's task goes here)"),
+      promptBox("Standing instructions at the top of every Delivery Copilot prompt", P.APP_PREAMBLE + "(the station's feature goes here)")
+    ], "Two kinds of prompts: lab prompts produce a Colab notebook for the paper, and build prompts add a feature to your Node.js app. Both assume Claude Code is running inside your portfolio repository."));
 
-    page.appendChild(section("Your toolbelt", "03", h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" },
-      h("thead", null, h("tr", null, h("th", { text: "Tool" }), h("th", { text: "What it is for" }), h("th", { text: "Cost" }))),
-      h("tbody", null, [
-        ["Google Colab", "A notebook in the browser with a free GPU (usually a T4). Every lab runs here.", "Free; Pro is about $10/month for faster GPUs"],
-        ["Hugging Face account", "Download models and datasets with one line of code. Some models (like Llama) need you to accept a license.", "Free"],
-        ["Kaggle Notebooks", "Backup free GPU, about 30 GPU-hours per week.", "Free"],
-        ["Claude or Claude Code", "Your engineer. Paste the lab prompt, review the plan, run the code.", "Your existing plan"],
-        ["GitHub", "Keep your notebooks, experiment cards, and failure logs in one repo. This portal lives there too.", "Free"],
-        ["Weights & Biases (optional)", "Tracks training runs and charts automatically. Useful from the Chinchilla station onward.", "Free for personal use"]
-      ].map(function (r) { return h("tr", null, r.map(function (c) { return h("td", { text: c }); })); }))
-    ))));
+    page.appendChild(section("Your free toolbelt", "04", tableEl(["Tool", "What it is for", "Cost"], [
+      ["Google Colab (free tier)", "Runs every lab notebook on a free T4 GPU. Sessions time out after a while, so save to GitHub.", "Free"],
+      ["Kaggle Notebooks", "Backup free GPU when Colab limits you, about 30 GPU-hours a week.", "Free"],
+      ["Hugging Face account", "Download open models and datasets. Some, like Llama, need you to accept a license first.", "Free"],
+      ["Claude Code", "Your engineer for both the labs and the app.", "Your existing access"],
+      ["GitHub", "Your public portfolio repository, and the bridge into Colab.", "Free"],
+      ["Node.js 20, Ollama, Docker", "Run Delivery Copilot, local LLMs, Postgres, and MongoDB on your laptop.", "Free (see the portfolio page if Docker is not allowed)"]
+    ]), "Every lab and build step is designed to run on free tiers. Where a step mentions paid APIs, it is only as a cost row you fill in by hand."));
 
-    page.appendChild(section("Reading a paper in three passes", "04", h("div", { class: "loop-grid", style: { gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" } },
+    page.appendChild(section("Reading a paper in three passes", "05", h("div", { class: "loop-grid", style: { gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" } },
       methodCard("PASS 1 · 15 MIN", "Shape", "Title, abstract, figures, headings, conclusion. Can you say what problem it solves and what the result is?", "Each station's 60-second version is a pass 1 for you."),
-      methodCard("PASS 2 · 1 HOUR", "Story", "Read the intro and method. Skip proofs and dense math. Mark every term you cannot define.", "Use the station's reading guide and glossary."),
+      methodCard("PASS 2 · 45 MIN", "Story", "Read the intro and method. Skip proofs and dense math. Mark every term you cannot define.", "Use the station's reading guide and glossary."),
       methodCard("PASS 3 · AFTER THE LAB", "Detail", "Re-read the experiments section now that you have run one. The tables will make sense.", "Compare their setup with yours in your experiment card.")
-    ), "Adapted from S. Keshav's \"How to Read a Paper\". Nobody reads a paper once, front to back."));
+    ), "Adapted from S. Keshav's “How to Read a Paper”. Nobody reads a paper once, front to back."));
 
-    page.appendChild(section("Plan your schedule", "05", figure({ w: "schedule", k: "Planner", title: "How long will the route take?", text: "Move the slider to the hours you can give each week. Estimates include reading, figures, and all four lab steps." }, "method")));
+    page.appendChild(section("Plan your schedule", "06", figure({ w: "schedule", k: "Planner", title: "How long will the route take?", text: "Set the hours you can give each week. Estimates include reading, figures, all four lab steps, the build step, interview practice, and publishing." }, "method")));
 
-    page.appendChild(section("Templates", "06", h("div", { class: "two-col" },
+    page.appendChild(section("Templates", "07", h("div", { class: "two-col" },
       promptBox("Experiment card (one per lab run)", EXPERIMENT_CARD),
       promptBox("Failure log entry (one per failure)", FAILURE_ENTRY)
     ), "The same templates are one click away in the notes box on every station."));
@@ -577,9 +765,9 @@
   function renderToolkit() {
     var page = h("div", { class: "page" });
     page.appendChild(h("header", { class: "page-head" },
-      h("div", { class: "eyebrow" }, h("span", { text: "For design reviews and planning" })),
-      h("h1", { text: "The AI PM toolkit" }),
-      P.richEl("p", { class: "dek" }, "The papers turned into tools you can use at work: a map of the LLM lifecycle, a helper for choosing between prompting, retrieval, and fine-tuning, back-of-envelope calculators for training and serving, and the questions to ask your ML team.")
+      h("div", { class: "eyebrow" }, h("span", { text: "For planning, design reviews, and vendor calls" })),
+      h("h1", { text: "The AI project toolkit" }),
+      P.richEl("p", { class: "dek" }, "The papers turned into tools for running AI projects: a helper for choosing between prompting, retrieval, and fine-tuning, back-of-envelope calculators for training cost and serving capacity, a map of the LLM lifecycle, and the questions to ask your ML team.")
     ));
     page.appendChild(section("Choose an approach", "01", figure({ w: "decide", k: "Decision helper", title: "Prompt, retrieve, fine-tune, or train?", text: "Answer a few questions about your use case. The helper recommends the cheapest approach likely to work and names the station that explains it." }, "toolkit")));
     page.appendChild(section("Estimate training cost", "02", figure({ w: "traincost", k: "Calculator", title: "What would it cost to train this model?", text: "Uses the rule of thumb from the scaling-law papers: training compute ≈ 6 × parameters × tokens. Change the GPU, its utilization, and the hourly price to match a real quote." }, "toolkit")));
@@ -595,6 +783,106 @@
     ].map(function (g) {
       return h("div", { class: "pm-card" }, h("span", { class: "q", text: g[0] }), h("ul", { class: "small" }, g[1].map(function (q) { return h("li", { text: q }); })));
     }))));
+    return page;
+  }
+
+  /* ---------- Portfolio and capstone ---------- */
+  function renderPortfolio() {
+    var page = h("div", { class: "page" });
+    var papers = P.sortedPapers();
+    page.appendChild(h("header", { class: "page-head" },
+      h("div", { class: "eyebrow" }, h("span", { text: "Capstone and public portfolio" })),
+      h("h1", { text: "Portfolio and capstone" }),
+      P.richEl("p", { class: "dek" }, "One public repository shows everything you did: a write-up for each station, and Delivery Copilot, a Node.js assistant for project teams that you build one feature at a time. Alongside it you draft the ten documents an AI project manager owns, first for the sample project and then, privately, for your real project at work.")
+    ));
+
+    page.appendChild(section("Two tracks, one set of skills", "01", h("div", { class: "two-col" },
+      h("div", { class: "pm-card" },
+        h("span", { class: "q", text: "Public: Delivery Copilot" }),
+        h("p", { text: "An assistant that answers questions over project documents with citations, logs every call, collects reviewer feedback, and reports quality, cost, and latency. Use public or sample documents, such as an open-source project's docs or project documents you write for a fictional client." }),
+        h("p", { class: "small muted", text: "Goes in your public repository. Shows you can build and evaluate an AI feature end to end." })),
+      h("div", { class: "pm-card" },
+        h("span", { class: "q", text: "Private: your project at work" }),
+        h("p", { text: "Apply the same documents and habits to the AI product your team is building: charter, data readiness, evaluation plan, cost model, launch checklist. Reuse Delivery Copilot's patterns for an internal prototype if your company allows it." }),
+        h("p", { class: "small muted", text: "Stays private. Shows up in interviews as stories, not files." }))
+    )));
+
+    page.appendChild(section("How Delivery Copilot fits together", "02", figure({ w: "copilotflow", k: "Architecture", title: "From documents to cited answers", text: "The request path through the app. Each piece is added at the station named in its box." }, "portfolio")));
+
+    var rows = papers.filter(function (p) { return p.build; }).map(function (p) {
+      var st = P.progress.get(p.id);
+      var builds = P.sessionsFor(p).filter(function (s) { return s.kind === "build"; });
+      var done = builds.length && builds.every(function (s) { return st[s.id]; });
+      var doc = P.templates[p.build.doc];
+      return [h("a", { href: "#" + p.id, text: pad(p.num) + " · " + p.short }), p.build.feature, doc ? doc.title : "", String(p.build.sessions || 1), done ? "✓ built" : "To do"];
+    });
+    page.appendChild(section("Milestones by station", "03", tableEl(["Station", "App feature", "Project document", "Sessions", "Status"], rows),
+      "Status updates when you tick the build sessions on each station."));
+
+    page.appendChild(section("The free stack", "04", [
+      tableEl(["Tool", "Role in the app", "Cost"], P.capstone.stack),
+      h("div", { class: "callout" }, h("span", { class: "callout-k", text: "If your laptop or employer limits you" }),
+        h("p", { text: "Ollama runs 1B–3B models on a laptop with 8 GB of RAM; 16 GB is comfortable. If you cannot run Ollama, ask Claude Code to use Transformers.js with a small instruct model such as Qwen2.5-0.5B-Instruct inside Node instead. If Docker is not allowed, use the Neon free tier for Postgres with pgvector and the MongoDB Atlas free tier." }))
+    ]));
+
+    page.appendChild(section("Standing instructions for Claude Code", "05", promptBox("Paste this above any build prompt (each station's prompt already includes it)", P.APP_PREAMBLE + "(the station's feature goes here)")));
+
+    page.appendChild(section("Your public portfolio", "06", [
+      promptBox("Repository layout", P.portfolioTemplates.repo),
+      h("div", { class: "two-col" },
+        h("div", { class: "pm-card" }, h("span", { class: "q", text: "After each station, publish" }), h("ul", { class: "small" },
+          h("li", { text: "The station folder: notebooks, charts, README with results and failures, experiment card, failure log." }),
+          h("li", { text: "The Delivery Copilot feature with its README section." }),
+          h("li", { text: "The project document for the sample project." }),
+          h("li", { text: "A short post linking the folder. One number, one failure, one lesson." }))),
+        h("div", { class: "pm-card" }, h("span", { class: "q", text: "Keep it safe" }), h("ul", { class: "small" },
+          h("li", { text: "Never publish your employer's documents, data, or code. Use public or invented sample data." }),
+          h("li", { text: "Check your company's policy on public posts about work topics." }),
+          h("li", { text: "Never commit API keys or tokens; keep a .env file out of Git." }),
+          h("li", { text: "Write about what you learned, not about confidential projects." }))))
+    ], "Recruiters and hiring managers skim. A top-level README with a progress table and one-line results per station does more than polished notebooks."));
+
+    var docs = Object.keys(P.templates).map(function (k) {
+      var t = P.templates[k], p = P.paper(t.station);
+      return h("details", { class: "concept" },
+        h("summary", null, h("span", null, h("span", { class: "c-name", text: t.title }), h("span", { class: "c-plain", text: p ? "Drafted at Station " + pad(p.num) + " · " + p.short : "" })), h("span", { class: "chev", "aria-hidden": "true", text: "›" })),
+        h("div", { style: { padding: "0 1.1rem 1rem" } }, promptBox(t.title, t.text)));
+    });
+    page.appendChild(section("Templates", "07", [
+      h("div", { class: "two-col" }, promptBox("Station README", P.portfolioTemplates.readme), promptBox("Post", P.portfolioTemplates.post)),
+      h("h3", { text: "The AI project manager's document kit" }),
+      h("div", { class: "concepts" }, docs)
+    ], "The same files are in the portfolio-template folder of this repository, ready to copy into your own."));
+    return page;
+  }
+
+  /* ---------- Interviews ---------- */
+  function renderInterviews() {
+    var page = h("div", { class: "page" });
+    var all = P.allInterviewQuestions();
+    page.appendChild(h("header", { class: "page-head" },
+      h("div", { class: "eyebrow" }, h("span", { text: all.length + " questions" })),
+      h("h1", { text: "Interview practice" }),
+      P.richEl("p", { class: "dek" }, "Questions AI project and program managers get asked, with what a strong answer covers. Practice out loud against the timer, mark what needs work, and use your labs, failure logs, and Delivery Copilot as your examples.")
+    ));
+    page.appendChild(section("Mock interview", "01", figure({ w: "interviewpractice", k: "Practice", title: "One question at a time", text: "Pick a pool, answer out loud in about two minutes, then compare with the guidance. Questions you mark for practice come back in their own pool." }, "interviews")));
+    page.appendChild(section("How to answer well", "02", h("div", { class: "loop-grid" },
+      loopCard("1", "Structure first", "Say how you will answer: “Three things: the metric, the data, and the risks.” Then keep to it."),
+      loopCard("2", "Use your evidence", "Point to something you ran: “When I compared keyword and semantic search on project docs, hit rate went from X to Y.”"),
+      loopCard("3", "Name the trade-off", "Cost against quality, speed against safety, build against buy. Interviewers listen for judgment."),
+      loopCard("4", "Close with measurement", "End with how you would know it worked: the metric, the threshold, and who agreed it.")
+    )));
+    var groups = {};
+    var order = [];
+    all.forEach(function (q) {
+      var g = q.group === "general" ? q.label : q.label;
+      if (!groups[g]) { groups[g] = []; order.push(g); }
+      groups[g].push(q);
+    });
+    var bank = order.map(function (g) {
+      return h("div", { style: { display: "grid", gap: "0.5rem" } }, h("h3", { text: g }), renderInterviewList(groups[g].map(function (q) { return { key: q.key, q: q.q, a: q.a }; })));
+    });
+    page.appendChild(section("Question bank", "03", bank, "General questions first, then one group per station. Status marks come from the mock interview above."));
     return page;
   }
 

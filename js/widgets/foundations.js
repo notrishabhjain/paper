@@ -69,44 +69,134 @@
     paint();
   });
 
-  /* ---------------- Schedule planner ---------------- */
+  /* ---------------- Schedule planner (daily ~45-minute sessions) ---------------- */
   P.widget("schedule", function (root) {
-    var hours = P.store.get("hours-per-week", 6);
+    var hours = P.store.get("hours-per-week", 5);
     var list = h("div");
     var readout = P.readout([
-      { key: "total", label: "Total study hours" },
+      { key: "sessions", label: "Sessions on the route" },
+      { key: "total", label: "Total study time" },
       { key: "weeks", label: "Weeks at this pace" },
       { key: "finish", label: "Finish around" }
     ]);
-    var slider = P.slider({ id: "sched-hours", label: "Hours per week", min: 2, max: 20, step: 1, value: hours,
-      format: function (v) { return v + " h"; },
+    var slider = P.slider({ id: "sched-hours", label: "Hours per week", min: 2, max: 12, step: 0.5, value: hours,
+      format: function (v) { return v + " h ≈ " + Math.round((v * 60) / P.SESSION_MIN) + " sessions"; },
       onInput: function (v) { hours = v; P.store.set("hours-per-week", v); paint(); } });
     root.appendChild(h("div", { class: "controls" }, slider));
     root.appendChild(readout);
     root.appendChild(list);
     function paint() {
       var papers = P.sortedPapers();
-      var total = papers.reduce(function (a, p) { return a + p.hours; }, 0);
-      var weeks = Math.ceil(total / hours);
+      var totalMin = papers.reduce(function (a, p) { return a + P.minutesFor(p); }, 0);
+      var totalSessions = papers.reduce(function (a, p) { return a + P.sessionsFor(p).length; }, 0);
+      var perWeek = hours * 60;
+      var weeks = Math.ceil(totalMin / perWeek);
       var finish = new Date(Date.now() + weeks * 7 * 864e5);
-      readout.update("total", total + " h");
-      readout.update("weeks", String(weeks));
+      readout.update("sessions", String(totalSessions), "about 45 minutes each");
+      readout.update("total", Math.round(totalMin / 60) + " h");
+      readout.update("weeks", String(weeks), "one session a day at " + hours + " h/week");
       readout.update("finish", finish.toLocaleDateString("en-US", { month: "short", year: "numeric" }));
       P.clear(list);
       var cum = 0;
       var rows = papers.map(function (p) {
-        var start = Math.floor(cum / hours) + 1;
-        cum += p.hours;
-        var end = Math.max(start, Math.ceil(cum / hours));
+        var start = Math.floor(cum / perWeek) + 1;
+        cum += P.minutesFor(p);
+        var end = Math.max(start, Math.ceil(cum / perWeek));
         return h("tr", null,
           h("td", null, h("a", { href: "#" + p.id, text: (p.num < 10 ? "0" : "") + p.num + " · " + p.short })),
-          h("td", { class: "tnum", text: p.hours + " h" }),
+          h("td", { class: "tnum", text: String(P.sessionsFor(p).length) }),
+          h("td", { class: "tnum", text: P.hoursFor(p) + " h" }),
           h("td", { class: "tnum", text: start === end ? "Week " + start : "Weeks " + start + "–" + end })
         );
       });
       list.appendChild(h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" },
-        h("thead", null, h("tr", null, h("th", { text: "Station" }), h("th", { text: "Hours" }), h("th", { text: "When" }))),
+        h("thead", null, h("tr", null, h("th", { text: "Station" }), h("th", { text: "Sessions" }), h("th", { text: "Time" }), h("th", { text: "When" }))),
         h("tbody", null, rows))));
+    }
+    paint();
+  });
+
+  /* ---------------- Log scale explainer ---------------- */
+  P.widget("logscale", function (root) {
+    var items = [
+      { name: "Transformer (base)", v: 65e6 }, { name: "BERT-Large", v: 340e6 }, { name: "GPT-2", v: 1.5e9 },
+      { name: "LLaMA-7B", v: 6.7e9 }, { name: "GPT-3", v: 175e9 }
+    ];
+    var mode = "linear";
+    var chart = h("div", { class: "chart" });
+    var note = h("p", { class: "small", "aria-live": "polite" });
+    var segEl = P.seg([{ value: "linear", label: "Linear axis" }, { value: "log", label: "Log axis" }], mode, function (v) { mode = v; paint(); }, "Axis type");
+    var sci = h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" },
+      h("thead", null, h("tr", null, h("th", { text: "Written out" }), h("th", { text: "Scientific notation" }), h("th", { text: "In words" }))),
+      h("tbody", null, [["1,000,000", "10⁶", "a million"], ["1,000,000,000", "10⁹", "a billion (B)"], ["1,000,000,000,000", "10¹²", "a trillion (T)"], ["175,000,000,000", "1.75 × 10¹¹", "GPT-3's parameter count"], ["314,000,000,000,000,000,000,000", "3.14 × 10²³", "GPT-3's training compute in FLOPs"]].map(function (r) {
+        return h("tr", null, h("td", { class: "mono small", style: { whiteSpace: "nowrap" }, text: r[0] }), h("td", { class: "tnum", text: r[1] }), h("td", { text: r[2] }));
+      }))));
+    root.appendChild(segEl);
+    root.appendChild(chart);
+    root.appendChild(note);
+    root.appendChild(sci);
+    var W = 600;
+    P.responsive(chart, function (wd) { W = wd; paint(); });
+    function paint() {
+      var labelW = Math.min(140, W * 0.34), barH = 20, gap = 10, H = items.length * (barH + gap) + 30;
+      var x = mode === "log" ? P.scaleLog(1e7, 1e12, labelW, W - 56) : P.scaleLin(0, 2e11, labelW, W - 56);
+      var svg = s("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Model sizes on a " + mode + " axis" });
+      var ticks = mode === "log" ? [1e7, 1e8, 1e9, 1e10, 1e11, 1e12] : [0, 5e10, 1e11, 1.5e11, 2e11];
+      ticks.forEach(function (t) {
+        svg.appendChild(s("line", { class: "chart-grid", x1: x(t), x2: x(t), y1: 4, y2: H - 24 }));
+        svg.appendChild(s("text", { class: "chart-muted", x: x(t), y: H - 8, "text-anchor": "middle", text: t === 0 ? "0" : P.fmt.compact(t, 0) }));
+      });
+      items.forEach(function (it, i) {
+        var y = 4 + i * (barH + gap);
+        var base = mode === "log" ? x(1e7) : x(0);
+        var w = Math.max(1.5, x(it.v) - base);
+        svg.appendChild(s("text", { class: "chart-text", x: labelW - 8, y: y + barH / 2 + 4, "text-anchor": "end", text: it.name }));
+        var bar = s("rect", { x: base, y: y, width: w, height: barH, rx: 3, fill: "var(--c1)" });
+        P.bindTip(bar, P.fmt.compact(it.v, 1) + " parameters", it.name);
+        svg.appendChild(bar);
+        svg.appendChild(s("text", { class: "chart-text-strong", x: base + w + 6, y: y + barH / 2 + 4, text: P.fmt.compact(it.v, 1) }));
+      });
+      P.clear(chart).appendChild(svg);
+      note.textContent = mode === "linear"
+        ? "On a linear axis, every grid line adds the same amount (50B). GPT-3 is so large that the first four models look like zero."
+        : "On a log axis, every grid line is 10× the previous one. Now every model is readable, and equal gaps mean equal ratios: BERT-Large to GPT-2 is about the same jump as GPT-2 to LLaMA-7B.";
+    }
+    paint();
+  });
+
+  /* ---------------- Dot product explainer ---------------- */
+  P.widget("dotproduct", function (root) {
+    var a = 30, b = 60;
+    var chart = h("div", { class: "chart" });
+    var readout = P.readout([{ key: "calc", label: "a₁×b₁ + a₂×b₂" }, { key: "dot", label: "Dot product" }, { key: "verdict", label: "Meaning" }]);
+    var sa = P.slider({ id: "dp-a", label: "Direction of A", min: 0, max: 359, step: 1, value: a, format: function (v) { return v + "°"; }, onInput: function (v) { a = v; paint(); } });
+    var sb = P.slider({ id: "dp-b", label: "Direction of B", min: 0, max: 359, step: 1, value: b, format: function (v) { return v + "°"; }, onInput: function (v) { b = v; paint(); } });
+    root.appendChild(h("div", { class: "controls" }, sa, sb));
+    root.appendChild(h("div", { class: "two-col" }, chart, readout));
+    root.appendChild(h("p", { class: "fig-note", text: "Both arrows have length 1, so the dot product here equals the cosine similarity used to compare embeddings. Real embeddings have hundreds of numbers instead of two; the calculation is the same, just longer." }));
+    var W = 320;
+    P.responsive(chart, function (wd) { W = wd; paint(); });
+    function paint() {
+      var ra = a * Math.PI / 180, rb = b * Math.PI / 180;
+      var va = [Math.cos(ra), Math.sin(ra)], vb = [Math.cos(rb), Math.sin(rb)];
+      var dot = va[0] * vb[0] + va[1] * vb[1];
+      var S = Math.min(W, 300), c = S / 2, sc = S * 0.38;
+      var svg = s("svg", { viewBox: "0 0 " + S + " " + S, role: "img", "aria-label": "Two vectors", style: "max-width:" + S + "px" });
+      svg.appendChild(s("defs", null, s("marker", { id: "dp-arrow", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto-start-reverse" }, s("path", { d: "M0,0 L10,5 L0,10 z", fill: "context-stroke" }))));
+      svg.appendChild(s("rect", { x: 0, y: 0, width: S, height: S, rx: 6, fill: "var(--chart-surface)" }));
+      svg.appendChild(s("circle", { cx: c, cy: c, r: sc, fill: "none", class: "chart-grid" }));
+      svg.appendChild(s("line", { class: "chart-grid", x1: 0, x2: S, y1: c, y2: c }));
+      svg.appendChild(s("line", { class: "chart-grid", x1: c, x2: c, y1: 0, y2: S }));
+      [[va, "var(--c1)", "A"], [vb, "var(--c2)", "B"]].forEach(function (v) {
+        var x2 = c + v[0][0] * sc, y2 = c - v[0][1] * sc;
+        svg.appendChild(s("line", { x1: c, y1: c, x2: x2, y2: y2, stroke: v[1], "stroke-width": 3, "marker-end": "url(#dp-arrow)" }));
+        svg.appendChild(s("text", { class: "chart-text-strong", x: c + v[0][0] * (sc + 16), y: c - v[0][1] * (sc + 16) + 4, "text-anchor": "middle", text: v[2] }));
+      });
+      P.clear(chart).appendChild(svg);
+      readout.update("calc", "(" + va[0].toFixed(2) + " × " + vb[0].toFixed(2) + ") + (" + va[1].toFixed(2) + " × " + vb[1].toFixed(2) + ")");
+      readout.update("dot", dot.toFixed(2), "range −1 to 1 here");
+      readout.update("verdict", dot > 0.7 ? "Very similar" : dot > 0.3 ? "Somewhat related" : dot > -0.3 ? "Unrelated" : "Opposite",
+        dot > 0.7 ? "like “invoice” and “bill”" : dot > -0.3 ? (dot > 0.3 ? "like “invoice” and “payment”" : "like “invoice” and “giraffe”") : "pointing in opposite directions");
     }
     paint();
   });

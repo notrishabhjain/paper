@@ -1,6 +1,8 @@
 # Paper Trail
 
-An interactive study route through nine AI papers, built for product and project managers moving into AI. Each paper gets a station with plain-language explanations, interactive figures, vocabulary, and a four-step lab you run with an AI coding assistant.
+An interactive study route through nine AI papers, built for IT project and program managers moving into AI. Each paper gets a station with plain-language explanations, interactive figures, vocabulary, a four-step lab you run through Claude Code on a free GPU, one feature of a Node.js capstone app, project-plan rows, a project document, and interview questions.
+
+The route is split into 122 sessions of about 45 minutes (roughly 87 hours, or 18 weeks at one session a day). It uses free tools only and keeps the math to intuition.
 
 | # | Station | Paper | Year |
 |---|---------|-------|------|
@@ -27,17 +29,17 @@ Progress, quiz answers, and notes are saved in your browser's local storage only
 
 ## What each station contains
 
-1. **The 60-second version**: the problem, the idea, the result, and why a PM should care.
+1. **The 60-second version**: the problem, the idea, the result, and why it matters for AI projects.
 2. **See it work**: interactive figures. Most run real math (attention, positional encoding, BPE tokenization, sampling, the Chinchilla loss law, LoRA parameter counts, RoPE rotations, KV-cache memory). Figures that use made-up numbers to show a mechanism are labeled as teaching models.
-3. **Key concepts**: how each idea works and where you meet it in products.
-4. **Read the code**: a short snippet with a plain-English note beside every line.
-5. **Numbers worth remembering**: the figures people quote in meetings.
-6. **The four-step lab**: reproduce, use your own data, compare baselines, log failures. Each step has a ready-to-paste prompt for Claude, Claude Code, or a similar assistant.
-7. **System design takeaways**: the decisions the paper helps you make.
-8. **Reading guide**: which sections of the paper to read and which to skip on a first pass.
-9. **Self-check quiz**, **progress checklist**, and a **notes box** with experiment-card and failure-log templates.
+3. **Key concepts**, **annotated code**, and **numbers worth remembering**.
+4. **The four-step lab**: reproduce, use your own data, compare baselines, log failures. Each step has a Claude Code prompt that writes a Colab notebook into your portfolio repository.
+5. **Build it in your stack**: one feature of *Delivery Copilot* (Node.js, Postgres + pgvector, MongoDB, Ollama), plus one AI project document to draft.
+6. **Put it in your project plan**: work items with typical effort, owners, and risks, copyable into a spreadsheet.
+7. **Reading guide**, **self-check quiz**, and **interview questions** with what a strong answer covers.
+8. **Publish it**: a prompt to draft the station README and a post for your public portfolio.
+9. **Sessions and notes**: the station's ~45-minute sessions as a checklist, plus notes with experiment-card and failure-log templates.
 
-Plus: a **study method** page with a schedule planner, a **PM toolkit** (approach decision helper, training-cost and serving-memory calculators, questions for your ML team), a **glossary** of 129 terms, and an **About you** questionnaire for tailoring the route.
+Shared pages: a **Today's session** card on the overview, a **study method** page with the Claude Code + Colab workflow and a schedule planner, an **AI project toolkit** (approach decision helper, training-cost and serving-memory calculators), a **portfolio and capstone** page, **interview practice** with a timer and 58 questions, a **glossary** of 133 terms, and an **About you** questionnaire.
 
 ## Repository layout
 
@@ -49,11 +51,17 @@ js/app.js                  hash router and page renderers
 js/content/glossary.js     glossary terms
 js/content/papers-*.js     station content (stories, concepts, labs, quizzes)
 js/widgets/*.js            interactive figures and calculators
+js/content/tailoring.js    sessions, build steps, project-plan rows, interview questions
+js/content/portfolio.js    project-document templates, capstone, general interview bank
 labs/                      lab guide, templates, and reference code
+portfolio-template/        starter files for your own public portfolio repository
+scripts/export-templates.js  regenerates portfolio-template/ from js/content/portfolio.js
 ```
 
 To edit content, change the objects in `js/content/`. Text can link glossary terms with `[[term-id]]` or `[[term-id|label]]`.
 
-## Labs
+## Labs and capstone
 
 See [`labs/README.md`](labs/README.md). Every lab runs on a free Google Colab GPU. `labs/01-transformer/tiny_transformer.py` is a fully commented reference implementation for Station 01.
+
+To start your own portfolio, create a new public repository, copy the contents of [`portfolio-template/`](portfolio-template/) into it, and open Claude Code there. The capstone app, Delivery Copilot, is built in that repository from each station's build prompt.

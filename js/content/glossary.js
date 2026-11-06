@@ -147,3 +147,11 @@ Portal.addTerms([
   { id: "staged-release", term: "Staged release", cat: "Business", paper: "gpt2", def: "Releasing model sizes gradually to watch for misuse. OpenAI did this with GPT-2 in 2019, starting a lasting debate about openness." },
   { id: "cost-per-token", term: "Cost per token", cat: "Business", paper: "flashattention", def: "What one token of input or output costs to serve. Driven by model size, hardware, batching, context length, and kernel efficiency." }
 ]);
+
+/* ---------- Math, gently (for readers who want intuition, not derivations) ---------- */
+Portal.addTerms([
+  { id: "log-scale", term: "Log scale", cat: "Math", paper: "foundations", def: "A chart axis where each step multiplies by the same factor, usually 10, instead of adding a fixed amount. It lets 65 million and 175 billion fit on one chart. Read each grid line as “10× the previous one”.", analogy: "Like the Richter scale for earthquakes: each step is ten times bigger." },
+  { id: "scientific-notation", term: "Scientific notation", cat: "Math", paper: "foundations", def: "A short way to write very large or small numbers: 3 × 10²³ means 3 followed by 23 zeros. Training compute is quoted this way. Adding 1 to the exponent means 10× more.", analogy: "10⁶ is a million, 10⁹ a billion, 10¹² a trillion." },
+  { id: "dot-product", term: "Dot product", cat: "Math", paper: "foundations", def: "Multiply two lists of numbers position by position and add up the results. The score is large when the lists point the same way, near zero when unrelated, and negative when opposite. Attention and similarity search are built on it.", analogy: "A compatibility score between two profiles: the more traits they share, the higher it gets." },
+  { id: "probability", term: "Probability distribution", cat: "Math", paper: "foundations", def: "A set of probabilities, one per possible outcome, that add up to 100%. A language model outputs one over its whole vocabulary every time it picks the next token.", analogy: "A weather forecast: 70% sun, 20% cloud, 10% rain." }
+]);

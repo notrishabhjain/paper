@@ -9,31 +9,20 @@ Every station ends with the same four steps:
 
 The full instructions and copy-ready prompts live on each station's page in the portal. This folder holds what is useful to keep in the repository.
 
-## How to run a lab with an AI coding assistant
+## How to run a lab with Claude Code and free Colab
 
-You act as the PM; the assistant acts as the engineer.
+You act as the project manager; Claude Code acts as the engineer.
 
-1. Open the station's lab tab and copy the prompt. It starts with standing instructions (one Colab notebook, a plan before code, plain-English notes above every cell, short runs, fixed seeds).
-2. Paste it into Claude, Claude Code, or a similar assistant. Review the plan and adjust it before approving.
-3. Run the notebook in Google Colab (Runtime → Change runtime type → T4 GPU).
-4. When something breaks, paste the error back and ask for a plain-English explanation before the fix. Log it with the failure-log template.
-5. Fill in an experiment card for each run and save the notebook, card, and log in this folder, one subfolder per station.
+1. Create a public portfolio repository (start from [`../portfolio-template/`](../portfolio-template/)), clone it, and open Claude Code in it.
+2. Copy the station's lab prompt. It starts with standing instructions: write one notebook into `stations/NN-name/`, free tools only, a plan before code, plain-English notes above every cell, short runs, fixed seeds.
+3. Review Claude Code's plan, adjust it, and approve. Commit and push the notebook.
+4. In Google Colab, open the notebook from the GitHub tab, set Runtime → Change runtime type → T4 GPU, and run all cells.
+5. When something breaks, paste the error back into Claude Code and ask for a plain-English explanation before the fix. Log it with the failure-log template.
+6. Save outputs with File → Save a copy in GitHub, fill in an experiment card, and use the station's publish prompt to draft the README and post.
 
-## Suggested folder structure for your work
+## Where your work goes
 
-```
-labs/
-  01-transformer/
-    tiny_transformer.py        reference implementation (provided)
-    notebook.ipynb             your Colab notebook
-    experiment-card.md         one per run
-    failure-log.md
-  02-bert/
-  ...
-  templates/
-    experiment-card.md         copy one per run
-    failure-log.md
-```
+Your notebooks, experiment cards, and failure logs live in your own portfolio repository, one folder per station (`stations/00-foundations/` to `stations/09-flashattention/`), next to the `delivery-copilot/` app. The lab prompts tell Claude Code to use those paths. This folder keeps the shared templates (`templates/`) and the Station 01 reference implementation.
 
 ## Reference implementation
 
@@ -65,4 +54,4 @@ You will reuse this model at Station 05 (scaling study), Station 08 (LLaMA-style
 |--------|-----------|------|
 | Google Colab free tier (T4 GPU) | Every lab | Free, with session limits |
 | Kaggle Notebooks (T4/P100) | Backup when Colab limits hit | Free, about 30 GPU-hours a week |
-| Colab Pro or a cloud L4/A100 | Faster runs; FlashAttention-2 kernels need Ampere or newer | About $10/month or $1–3/hour |
+| Paid GPUs (L4/A100) | Not needed. Only the optional FlashAttention-2 kernel comparison benefits from Ampere or newer | Skip on the free route |
