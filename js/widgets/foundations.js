@@ -5,31 +5,31 @@
 
   /* ---------------- Lifecycle map ---------------- */
   var LIFECYCLE = [
-    { stage: "foundations", name: "Data & tokens", papers: ["foundations", "gpt2", "llama"],
+    { stage: "foundations", name: "Data & tokens", plain: "gathering and preparing the reading material", papers: ["foundations", "gpt2", "llama"],
       what: "Collect, clean, deduplicate, and filter text. Build a tokenizer that turns text into numbers.",
       decisions: ["Which data sources, and are we licensed to use them?", "How do we remove personal data and toxic content?", "Which languages and domains must be covered?"],
       who: "Data engineers, legal and privacy, data vendors", cost: "Weeks to months. Often the slowest stage." },
-    { stage: "architecture", name: "Architecture", papers: ["transformer"],
+    { stage: "architecture", name: "Architecture", plain: "designing how the model reads", papers: ["transformer"],
       what: "Pick the model design: encoder, decoder, or both; how many layers; how long a context window.",
       decisions: ["How long must the context window be for our use case?", "What latency can users tolerate?", "Do we need generation or only understanding?"],
       who: "Research scientists, ML engineers", cost: "Small experiments, days to weeks." },
-    { stage: "pretrain", name: "Pre-training", papers: ["bert", "gpt2", "llama"],
+    { stage: "pretrain", name: "Pre-training", plain: "reading the whole library", papers: ["bert", "gpt2", "llama"],
       what: "Train on trillions of tokens to predict missing or next words. The model learns language and world knowledge.",
       decisions: ["Build, buy an API, or start from open weights? (Almost always one of the last two.)", "What does an open-weights license allow us to do?"],
       who: "ML infrastructure and research teams", cost: "From thousands of dollars for small models to $100M+ for frontier models." },
-    { stage: "scale", name: "Scaling", papers: ["gpt3", "chinchilla"],
+    { stage: "scale", name: "Scaling", plain: "deciding how big, and how much to read", papers: ["gpt3", "chinchilla"],
       what: "Decide how big the model should be and how much data it should see, given a compute budget.",
       decisions: ["Optimize for training cost or for serving cost?", "Is more data available, or are we data-limited?", "Which capabilities only appear at larger sizes?"],
       who: "Research leads, finance, leadership", cost: "Sets the size of every other bill." },
-    { stage: "align", name: "Alignment", papers: ["instructgpt"],
+    { stage: "align", name: "Alignment", plain: "teaching manners with human feedback", papers: ["instructgpt"],
       what: "Teach the model to follow instructions and be helpful and safe, using demonstrations and human rankings.",
       decisions: ["What does a good answer look like? (Labeling guidelines.)", "Who are the labelers, and how do we measure agreement?", "Which behaviors must the model refuse?"],
       who: "PMs, labelers and vendors, policy, research", cost: "Labeling budgets from thousands to millions of dollars. Weeks." },
-    { stage: "adapt", name: "Adaptation", papers: ["lora"],
+    { stage: "adapt", name: "Adaptation", plain: "making it yours", papers: ["lora"],
       what: "Customize a model for your product: prompting, retrieval (RAG), or fine-tuning with methods like LoRA.",
       decisions: ["Prompting, RAG, or fine-tuning? (See the PM toolkit.)", "What evaluation set proves it works on our data?", "How do we version and roll back adapters?"],
       who: "Applied ML engineers, PMs, domain experts", cost: "Tens to thousands of dollars per fine-tune. Hours to days." },
-    { stage: "efficiency", name: "Serving", papers: ["flashattention"],
+    { stage: "efficiency", name: "Serving", plain: "running it for real users", papers: ["flashattention"],
       what: "Run the model for users quickly and cheaply: efficient attention kernels, quantization, batching, caching.",
       decisions: ["What latency do we promise (p50 and p95)?", "What is our cost per 1,000 requests?", "How long a context can we afford to offer?"],
       who: "ML platform and infrastructure", cost: "Ongoing. Over a product's life, serving often costs more than training." }
@@ -44,6 +44,7 @@
       var b = h("button", { type: "button", class: "lc-step", "aria-pressed": String(i === current), style: { "--stage": P.stages[st.stage].color } },
         h("span", { class: "lc-n", text: "Stage " + (i + 1) }),
         h("span", { class: "lc-name", text: st.name }),
+        h("span", { class: "lc-plain", text: st.plain }),
         h("span", { class: "lc-papers", text: names })
       );
       b.addEventListener("click", function () { current = i; P.store.set("lifecycle-stage", i); paint(); });
@@ -54,7 +55,7 @@
       buttons.forEach(function (b, i) { b.setAttribute("aria-pressed", String(i === current)); });
       var st = LIFECYCLE[current];
       P.clear(detail);
-      detail.appendChild(h("div", null, h("span", { class: "k", text: "What happens" }), h("p", { text: st.what }),
+      detail.appendChild(h("div", null, h("span", { class: "k", text: st.name + ": " + st.plain }), h("p", { text: st.what }),
         h("span", { class: "k", style: { marginTop: "0.5rem" }, text: "Who is involved" }), h("p", { text: st.who }),
         h("span", { class: "k", style: { marginTop: "0.5rem" }, text: "Cost and time" }), h("p", { text: st.cost })));
       detail.appendChild(h("div", null, h("span", { class: "k", text: "Decisions a PM owns" }), h("ul", null, st.decisions.map(function (d) { return h("li", { text: d }); }))));
@@ -197,6 +198,71 @@
       readout.update("dot", dot.toFixed(2), "range −1 to 1 here");
       readout.update("verdict", dot > 0.7 ? "Very similar" : dot > 0.3 ? "Somewhat related" : dot > -0.3 ? "Unrelated" : "Opposite",
         dot > 0.7 ? "like “invoice” and “bill”" : dot > -0.3 ? (dot > 0.3 ? "like “invoice” and “payment”" : "like “invoice” and “giraffe”") : "pointing in opposite directions");
+    }
+    paint();
+  });
+
+
+  /* ---------------- Guess the next word (teaching model) ---------------- */
+  P.widget("nextword", function (root) {
+    var PROMPTS = [
+      { text: "Thanks for your quick", picks: ["reply", "response", "help", "giraffe"], model: [["reply", 46], ["response", 31], ["help", 12], ["turnaround", 6], ["giraffe", 0.01]], more: "reply. I will review the document and get back to you by Friday." },
+      { text: "The meeting has been moved to", picks: ["Friday", "tomorrow", "Monday", "giraffe"], model: [["tomorrow", 29], ["Friday", 18], ["next", 15], ["Monday", 14], ["giraffe", 0.01]], more: "tomorrow at 10 am because the client asked for more time." },
+      { text: "Please find attached the latest", picks: ["report", "version", "invoice", "giraffe"], model: [["version", 27], ["report", 22], ["invoice", 13], ["draft", 12], ["giraffe", 0.01]], more: "version of the project plan for your review." }
+    ];
+    var pi = 0, picked = null, timer = null;
+    var sentence = h("div", { class: "gen-out", "aria-live": "polite" });
+    var choices = h("div", { class: "word-row", role: "group", "aria-label": "Your guess" });
+    var bars = h("div", { class: "bars" });
+    var msg = h("p", { class: "small", "aria-live": "polite" });
+    var cont = h("button", { type: "button", class: "btn", text: "Let the model keep writing" });
+    var nextP = h("button", { type: "button", class: "btn", text: "Try another sentence" });
+    cont.addEventListener("click", function () {
+      if (timer) return;
+      var words = PROMPTS[pi].more.split(" "), i = 0;
+      P.clear(sentence);
+      sentence.appendChild(document.createTextNode(PROMPTS[pi].text + " "));
+      var out = h("span", { class: "gen-new" });
+      sentence.appendChild(out);
+      timer = setInterval(function () {
+        out.textContent += (i ? " " : "") + words[i];
+        i++;
+        if (i >= words.length) { clearInterval(timer); timer = null; msg.textContent = "Each word was a new guess, based on everything written so far. That loop, guess and append, is how every chat AI writes its answers."; }
+      }, 220);
+    });
+    nextP.addEventListener("click", function () { if (timer) { clearInterval(timer); timer = null; } pi = (pi + 1) % PROMPTS.length; picked = null; paint(); });
+    root.appendChild(sentence);
+    root.appendChild(h("p", { class: "kbd-hint", text: "Which word comes next? Click your guess." }));
+    root.appendChild(choices);
+    root.appendChild(bars);
+    root.appendChild(msg);
+    root.appendChild(h("div", { class: "row" }, cont, nextP));
+    root.appendChild(h("p", { class: "fig-note", text: "Teaching model: the percentages are made up to show how a language model spreads its guesses. Real models choose among tens of thousands of possible words." }));
+    function paint() {
+      var p = PROMPTS[pi];
+      sentence.textContent = p.text + " ___";
+      P.clear(choices);
+      p.picks.forEach(function (w) {
+        var b = h("button", { type: "button", class: "word", "aria-pressed": String(picked === w), text: w });
+        b.addEventListener("click", function () { picked = w; paint(); });
+        choices.appendChild(b);
+      });
+      P.clear(bars);
+      cont.disabled = !picked;
+      if (!picked) { msg.textContent = ""; return; }
+      bars.appendChild(h("div", { class: "small", style: { fontWeight: "600" }, text: "The model's guesses" }));
+      p.model.forEach(function (m) {
+        bars.appendChild(h("div", { class: "bar-row" },
+          h("span", { class: "bl", text: m[0] + (m[0] === picked ? " ← you" : "") }),
+          h("span", { class: "bar-track" }, h("span", { class: "bar-fill", style: { display: "block", width: Math.max(0.5, (m[1] / p.model[0][1]) * 100) + "%" } })),
+          h("span", { class: "bv", text: m[1] < 1 ? "≈ 0%" : m[1] + "%" })));
+      });
+      var hit = p.model.filter(function (m) { return m[0] === picked; })[0];
+      msg.textContent = picked === "giraffe"
+        ? "The model gives “giraffe” almost no chance: in millions of emails, it has rarely followed these words. It learned that from reading, not from a rule."
+        : picked === p.model[0][0]
+          ? "You and the model agree. You both learned from experience which word usually comes next; the model learned from reading billions of sentences."
+          : "Good guess. The model gives “" + picked + "” " + (hit ? hit[1] : 0) + "%. It doesn't always pick the top word; it picks from these chances, which is why the same question can get slightly different answers.";
     }
     paint();
   });

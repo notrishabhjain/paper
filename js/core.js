@@ -132,11 +132,14 @@
   P.SESSION_MIN = 45;
   P.sessionsFor = function (p) {
     if (p._sessions) return p._sessions;
-    var list = [
-      { id: "read", kind: "read", label: "Read the 60-second version and the key concepts", min: 40, target: "sec-sixty" },
-      { id: "play", kind: "play", label: "Play with the interactive figures", min: 40, target: "sec-see" },
-      { id: "paper", kind: "paper", label: "Read the code notes and the paper's guided sections", min: 45, target: "sec-code" }
-    ];
+    var list = [];
+    if (p.id === "foundations") list.push({ id: "start", kind: "start", label: "Start here: how AI works, in nine small steps", min: 25, route: "start" });
+    list.push(
+      { id: "read", kind: "read", label: "Plain-English intro: " + (p.plainTitle || p.short), min: 30, target: "sec-intro" },
+      { id: "play", kind: "play", label: "Try the interactive figures", min: 40, target: "sec-see" },
+      { id: "concepts", kind: "concepts", label: "Go deeper: the paper in 60 seconds, key concepts, and vocabulary", min: 35, target: "sec-sixty" },
+      { id: "paper", kind: "paper", label: "Read the code notes and the paper's guided sections", min: 40, target: "sec-code" }
+    );
     var counts = p.labSessions || [2, 2, 1, 1];
     p.lab.steps.forEach(function (st, i) {
       var n = counts[i] || 1;

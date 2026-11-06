@@ -826,6 +826,36 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); }
 .check.done .check-text > span:first-child { text-decoration: line-through; color: var(--ink-3); }
 .check.done .check-min { text-decoration: none; }
 
+/* Gradual learning: parts, plain-English intro, Start page */
+.part {
+  margin-top: 3.5rem;
+  padding: 1.1rem 0 0;
+  border-top: 2px solid var(--ink);
+  display: grid;
+  gap: 0.3rem;
+  max-width: var(--col);
+}
+.part-k { font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+.part-t { font-family: var(--font-display); font-size: var(--fs-3xl); line-height: 1.1; }
+.part-d { color: var(--ink-2); }
+.part + .section { margin-top: 1.5rem; }
+.term-sample { background: linear-gradient(transparent 52%, var(--mark-bg) 52%); padding: 0 0.08em; }
+.explain p { font-size: var(--fs-lg); line-height: 1.65; }
+.aside-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); padding: 1rem 1.1rem; display: grid; gap: 0.35rem; align-content: start; min-width: 0; }
+.aside-card h3 { font-family: var(--font-display); font-weight: 500; font-size: var(--fs-xl); }
+.aside-card p { font-size: var(--fs-md); }
+.word-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr)); gap: 0.5rem; }
+.word-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 0.6rem 0.75rem; display: grid; gap: 0.2rem; font-size: var(--fs-sm); align-content: start; }
+.word-card .term { font-weight: 600; font-size: var(--fs-md); justify-self: start; }
+.remember { background: var(--surface-2); border-radius: var(--radius-lg); padding: 1rem 1.1rem; max-width: var(--col); }
+.remember ol { display: grid; gap: 0.35rem; }
+.loop-grid.three { grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); }
+.lc-step .lc-plain { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.3; }
+.start-step { max-width: var(--col-wide); }
+.start-step > h2 { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+.start-step > .aside-card, .start-step > p { max-width: var(--col); }
+.start-text { font-size: var(--fs-lg); line-height: 1.65; max-width: var(--col); }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
   .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }

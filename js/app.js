@@ -49,7 +49,7 @@
 
   /* ---------- Routing ---------- */
   var main, rail, currentName = "home", labCtl = null;
-  var TITLES = { method: "Study method", toolkit: "Toolkit", glossary: "Glossary", profile: "About you", portfolio: "Portfolio", interviews: "Interviews" };
+  var TITLES = { start: "Start here", method: "Study method", toolkit: "Toolkit", glossary: "Glossary", profile: "About you", portfolio: "Portfolio", interviews: "Interviews" };
   function route() {
     var hash = (location.hash || "").replace(/^#/, "");
     var name = hash || "home";
@@ -68,6 +68,7 @@
     else if (name === "profile") page = renderProfile();
     else if (name === "portfolio") page = renderPortfolio();
     else if (name === "interviews") page = renderInterviews();
+    else if (name === "start") page = renderStart();
     else { page = renderHome(); name = "home"; }
     main.appendChild(page);
     main.appendChild(footer());
@@ -119,6 +120,7 @@
     });
     rail.appendChild(ol);
     rail.appendChild(h("nav", { class: "rail-extra", "aria-label": "More" },
+      h("a", { href: "#start", "data-route": "start", text: "Start here (25-minute story)" }),
       h("a", { href: "#home", "data-route": "home", text: "Overview and today's session" }),
       h("a", { href: "#method", "data-route": "method", text: "Study method" }),
       h("a", { href: "#toolkit", "data-route": "toolkit", text: "AI project toolkit" }),
@@ -176,10 +178,11 @@
       P.sessionsFor(q).forEach(function (x) { if (!st[x.id]) remaining += x.min; });
     });
     var weeksLeft = Math.max(1, Math.ceil(remaining / (hours * 60)));
-    var go = h("a", { class: "btn primary", href: "#" + p.id, text: "Start this session" });
+    var dest = s.route || p.id;
+    var go = h("a", { class: "btn primary", href: "#" + dest, text: "Start this session" });
     go.addEventListener("click", function () {
-      P.pendingJump = { target: s.target, step: s.step };
-      if (location.hash === "#" + p.id) { route(); }
+      if (!s.route) P.pendingJump = { target: s.target, step: s.step };
+      if (location.hash === "#" + dest) { route(); }
     });
     var done = h("button", { type: "button", class: "btn", text: "Mark as done" });
     done.addEventListener("click", function () { P.progress.set(p.id, s.id, true); route(); P.toast("Session marked as done"); });
@@ -200,9 +203,12 @@
     var ns = P.nextSession();
     var interviewCount = (P.interviewGeneral || []).length + papers.reduce(function (a, p) { return a + (p.interview || []).length; }, 0);
     page.appendChild(h("header", { class: "hero" },
-      h("div", { class: "eyebrow" }, h("span", { text: "A study route for AI project and program managers" }), h("span", { text: "2017 → 2023" })),
-      h("h1", { html: "Nine papers built modern AI. Learn them <em>one station at a time.</em>" }),
-      P.richEl("p", { class: "dek" }, "Each station explains one paper in plain language, lets you play with the core idea, and teaches the vocabulary you will hear in meetings. Then you run a four-step lab through Claude Code on a free GPU, add one feature to a Node.js app for your portfolio, and practice the interview questions AI project managers get asked. Short daily sessions, free tools only, no math beyond intuition."),
+      h("div", { class: "eyebrow" }, h("span", { text: "For project and program managers new to AI" })),
+      h("h1", { html: "Understand AI from the ground up, <em>one small step at a time.</em>" }),
+      P.richEl("p", { class: "dek" }, "No AI background needed. Every station starts in plain English, with an everyday comparison and an example from project work. Only then does it bring in the real terms, and only after that do you try things hands-on. You study in short daily sessions, with free tools."),
+      h("div", { class: "row" },
+        h("a", { class: "btn primary", href: "#start", text: "Start here: a 25-minute story" }),
+        h("a", { class: "btn", href: "#foundations", text: "Go to the first station" })),
       h("div", { class: "hero-stats" },
         h("span", null, h("b", { text: String(papers.length) }), "stations"),
         h("span", null, h("b", { text: String(ns.total) }), "sessions of ~45 min"),
@@ -220,10 +226,10 @@
           h("span", { class: "rdot", text: pad(p.num) }),
           h("span", { class: "route-body" },
             h("span", { class: "route-title" },
-              h("h3", { text: p.title }),
-              h("span", { class: "yr", text: p.year + " · " + p.org })
+              h("h3", { text: p.plainTitle || p.title })
             ),
-            h("p", { text: p.oneLiner }),
+            h("p", { text: p.hook || p.oneLiner }),
+            h("span", { class: "yr", text: p.arxiv || p.url ? "The paper: " + p.title + " (" + p.year + ")" : "A primer before the papers" }),
             h("span", { class: "stage-chip", style: { "--stage": P.stages[p.stage].color }, text: P.stages[p.stage].name + " · " + P.sessionsFor(p).length + " sessions" + (p.build ? " · builds " + p.build.feature.toLowerCase() : "") })
           ),
           h("span", { class: "route-side" },
@@ -234,14 +240,13 @@
       ));
     });
     page.appendChild(section("The route", null, routeList,
-      "Go in order. Each paper answers a question the previous one raised, and each station adds one feature to the same app."));
+      "Ten stations, in order. Each one builds on the one before, so nothing appears before you are ready for it."));
 
-    page.appendChild(section("How every station works", null, h("div", { class: "loop-grid" },
-      loopCard("A", "Understand", "A 60-second summary, key concepts in plain words, and why it matters for the AI projects you will run."),
-      loopCard("B", "Play", "Interactive figures that let you change one thing and watch what happens."),
-      loopCard("C", "Build", "A four-step lab on a free Colab GPU, plus one Node.js feature for Delivery Copilot, all written by Claude Code from ready prompts."),
-      loopCard("D", "Prove", "Project-plan rows, a project document, interview questions, and a short public write-up for your portfolio.")
-    ), "Highlighted words like [[attention]] or [[parameter]] open a definition when you click them. Progress and notes are saved in this browser only."));
+    page.appendChild(section("How every station works", null, h("div", { class: "loop-grid three" },
+      loopCard("PART 1", "Get the idea", "Plain English first: what the paper did, an everyday comparison, an example from project work, and a few figures to play with. No jargon."),
+      loopCard("PART 2", "Go deeper", "Now the real terms. Every new word is highlighted; click it for a one-line meaning. Then a guided look at the paper itself."),
+      loopCard("PART 3", "Do it", "A hands-on lab on a free GPU, one feature for your portfolio app, project-plan rows, interview questions, and a short public write-up.")
+    ), "Highlighted words like [[attention]] or [[parameter]] open a plain definition when you click them. Progress and notes are saved in this browser only."));
 
     page.appendChild(section("Where each paper fits", null, figure({
       w: "lifecycle",
@@ -300,24 +305,26 @@
     var link = paperLink(p);
     var stage = P.stages[p.stage];
     var sessions = P.sessionsFor(p);
+    function minutesOf(kinds) { return sessions.filter(function (s) { return kinds.indexOf(s.kind) >= 0; }).reduce(function (a, s) { return a + s.min; }, 0); }
+    function timeLabel(min) { return min >= 90 ? "about " + Math.round(min / 60 * 2) / 2 + " hours" : "about " + min + " minutes"; }
+
     page.appendChild(h("header", { class: "page-head" },
       h("div", { class: "eyebrow" },
         h("span", { text: "Station " + pad(p.num) }),
-        p.arxiv ? h("span", { text: "arXiv:" + p.arxiv }) : null,
         h("span", { text: String(p.year) }),
         h("span", { class: "stage-chip", style: { "--stage": stage.color }, text: stage.name })
       ),
-      h("h1", { text: p.title }),
-      P.richEl("p", { class: "dek" }, p.oneLiner),
+      h("h1", { text: p.plainTitle || p.title }),
+      P.richEl("p", { class: "dek" }, p.hook || p.oneLiner),
       h("div", { class: "meta-row" },
-        h("span", null, h("strong", { text: p.authors }), " · " + p.org),
+        link ? h("span", null, "The paper: ", h("strong", { text: p.title }), " · " + p.authors + ", " + p.org) : h("span", null, h("strong", { text: "A primer" }), " before the papers"),
         h("span", null, h("strong", { text: sessions.length + " sessions" }), " · ≈ " + P.hoursFor(p) + " hours"),
         link ? h("a", { href: link, target: "_blank", rel: "noopener", text: "Open the paper ↗" }) : null
       )
     ));
 
     // Jump chips and this station's next session
-    var jumps = [["The idea", "sec-sixty"], ["Figures", "sec-see"], ["Concepts", "sec-concepts"], ["Lab", "sec-lab"], ["Build", "sec-build"], ["Project plan", "sec-plan"], ["Interview", "sec-interview"], ["Publish", "sec-publish"], ["Sessions", "sec-progress"]];
+    var jumps = [["Plain English", "sec-intro"], ["Figures", "sec-see"], ["The paper", "sec-sixty"], ["Concepts", "sec-concepts"], ["Lab", "sec-lab"], ["Build", "sec-build"], ["Project plan", "sec-plan"], ["Interview", "sec-interview"], ["Publish", "sec-publish"], ["Sessions", "sec-progress"]];
     page.appendChild(h("nav", { class: "jump", "aria-label": "On this page" }, jumps.map(function (j) {
       var b = h("button", { type: "button", class: "chip", text: j[0] });
       b.addEventListener("click", function () { jumpTo(j[1]); });
@@ -326,8 +333,8 @@
     var state = P.progress.get(p.id);
     var nextHere = sessions.filter(function (s) { return !state[s.id]; })[0];
     if (nextHere) {
-      var goBtn = h("button", { type: "button", class: "btn small primary", text: "Go to it" });
-      goBtn.addEventListener("click", function () { jumpTo(nextHere.target, nextHere.step); });
+      var goBtn = nextHere.route ? h("a", { class: "btn small primary", href: "#" + nextHere.route, text: "Go to it" }) : h("button", { type: "button", class: "btn small primary", text: "Go to it" });
+      if (!nextHere.route) goBtn.addEventListener("click", function () { jumpTo(nextHere.target, nextHere.step); });
       page.appendChild(h("div", { class: "today-inline" },
         h("span", { class: "today-k" }, h("span", { text: "Next session here" })),
         h("span", { class: "small", text: nextHere.label + " · ≈ " + nextHere.min + " min" }),
@@ -336,27 +343,46 @@
 
     var n = 0;
     function idx() { n++; return pad(n); }
+    function part(num, title, desc, min) {
+      return h("div", { class: "part" },
+        h("span", { class: "part-k", text: "Part " + num + " of 3 · " + timeLabel(min) }),
+        h("p", { class: "part-t", text: title }),
+        P.richEl("p", { class: "part-d" }, desc));
+    }
 
-    // The 60-second version
+    /* ===== Part 1: Get the idea ===== */
+    page.appendChild(part(1, "Get the idea", "Plain English, an everyday comparison, and a few figures to play with. No jargon yet.", minutesOf(["read", "play"])));
+    var intro = [];
+    if (p.bridge) intro.push(h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Where you are" }), P.richEl("p", null, p.bridge)));
+    if (p.explain) intro.push(h("div", { class: "prose explain" }, p.explain.map(function (t) { return P.richEl("p", null, t); })));
+    var pair = [];
+    if (p.everyday) pair.push(h("div", { class: "aside-card" }, h("span", { class: "mini-h", text: "Everyday comparison" }), h("h3", { text: p.everyday.title }), h("p", { text: p.everyday.text })));
+    if (p.example) pair.push(h("div", { class: "aside-card" }, h("span", { class: "mini-h", text: "Example from project work" }), h("h3", { text: p.example.title }), h("p", { text: p.example.text })));
+    if (pair.length) intro.push(h("div", { class: "two-col" }, pair));
+    if (p.words) intro.push(h("div", { style: { display: "grid", gap: "0.6rem" } },
+      h("h3", { text: "Words worth learning now" }),
+      wordCards(p.words),
+      h("p", { class: "small muted", text: "Only these few for now. Click any word for its full glossary entry." })));
+    if (p.remember) intro.push(h("div", { class: "remember" }, h("span", { class: "mini-h", text: "If you remember only three things" }), h("ol", null, p.remember.map(function (r) { return P.richEl("li", null, r); }))));
+    page.appendChild(section("In plain English", idx(), intro, null, "sec-intro"));
+
+    var nFig = 0;
+    page.appendChild(section("See it work", idx(), p.figures.map(function (f) {
+      nFig++;
+      f.k = f.k || "Figure " + p.num + "." + nFig;
+      return figure(f, p.id);
+    }), "Change one thing and watch what happens. If a figure feels too technical, read its takeaway line and move on; Part 2 explains the terms.", "sec-see"));
+
+    /* ===== Part 2: Go deeper ===== */
+    page.appendChild(part(2, "Go deeper", "Now with the real terms. Every new word is <span class=\"term-sample\">highlighted</span>: click it for a one-line meaning.", minutesOf(["concepts", "paper"])));
     var storyEl = h("div", { class: "story" },
       storyCell("1", "The problem", p.story.problem),
       storyCell("2", "The idea", p.story.idea),
       storyCell("3", "The result", p.story.result)
     );
     var why = h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Why it matters for AI projects" }), P.richEl("p", null, p.whyPM));
-    var sixty = [storyEl, why];
-    if (p.analogy) sixty.splice(1, 0, h("div", { class: "prose" }, P.richEl("p", null, "<b>Analogy.</b> " + p.analogy)));
-    page.appendChild(section("The 60-second version", idx(), sixty, null, "sec-sixty"));
+    page.appendChild(section(link ? "The paper in 60 seconds" : "The ideas in 60 seconds", idx(), [P.richEl("p", { class: "section-intro" }, p.oneLiner), storyEl, why], null, "sec-sixty"));
 
-    // Figures
-    var nFig = 0;
-    page.appendChild(section("See it work", idx(), p.figures.map(function (f) {
-      nFig++;
-      f.k = f.k || "Figure " + p.num + "." + nFig;
-      return figure(f, p.id);
-    }), "Change the controls and watch the result. Figures marked as teaching models use made-up numbers to show the mechanism; the rest use numbers from the paper.", "sec-see"));
-
-    // Key concepts
     var concepts = h("div", { class: "concepts" }, p.concepts.map(function (c, i) {
       return h("details", { class: "concept", open: i === 0 ? true : null },
         h("summary", null,
@@ -373,61 +399,107 @@
       var t = P.term(id);
       return h("button", { type: "button", class: "chip", "data-term": id, text: t ? t.term : id });
     }));
-    page.appendChild(section("Key concepts", idx(), [concepts, h("h3", { text: "Vocabulary from this paper" }), vocab], null, "sec-concepts"));
+    page.appendChild(section("Key concepts", idx(), [concepts, h("h3", { text: "All the vocabulary from this paper" }), vocab],
+      "Each concept opens with one plain sentence. Expand it for how it works and where you will meet it at work.", "sec-concepts"));
 
-    // Read the code
     if (p.code) page.appendChild(section("Read the code", idx(), codeAnnot(p.code),
-      "You do not need to write this. Read it next to the plain-English notes so the code Claude Code writes for you stops looking foreign.", "sec-code"));
+      "You will never need to write this. Read the plain-English note beside each line, so the code Claude Code writes for you stops looking foreign.", "sec-code"));
 
-    // Numbers
     page.appendChild(section("Numbers worth remembering", idx(), h("div", { class: "numbers" }, p.numbers.map(function (x) {
       return h("div", { class: "number" }, h("span", { class: "n", text: x.value }), P.richEl("span", { class: "l" }, x.label));
     })), null, "sec-numbers"));
 
-    // Lab
-    page.appendChild(section("Practice: the four-step lab", idx(), renderLab(p), p.lab.summary + " Each prompt tells Claude Code to write the notebook into <code>" + stationFolder(p) + "/</code> in your portfolio repository.", "sec-lab"));
-
-    // Build
-    if (p.build) page.appendChild(section("Build it in your stack", idx(), renderBuild(p),
-      "One feature of Delivery Copilot, the Node.js app you grow into your capstone. Paste the prompt into Claude Code in your portfolio repository; everything runs free on your laptop. The <a href=\"#portfolio\">portfolio page</a> shows the whole plan.", "sec-build"));
-
-    // Project plan
-    page.appendChild(section("Put it in your project plan", idx(), renderPlan(p),
-      "Work items you can copy into a real AI project plan, with typical effort for a small team, followed by the decisions this paper helps you make.", "sec-plan"));
-
-    // Reading guide
     page.appendChild(section("Read the paper", idx(), h("div", { class: "prose" },
       h("ol", null, p.reading.map(function (r) { return P.richEl("li", null, r); })),
       link ? h("p", null, h("a", { class: "btn", href: link, target: "_blank", rel: "noopener", text: (p.arxiv ? "arXiv:" + p.arxiv : "Read the paper (PDF)") + " ↗" })) : null
-    ), "A guided first pass. Read the parts below, skip the rest, and come back to the details after the lab.", "sec-read"));
+    ), "Optional on a first pass. Read only the parts listed, skip the math, and come back after the lab when the tables make more sense.", "sec-read"));
 
-    // Quiz
-    page.appendChild(section("Self-check", idx(), renderQuiz(p), null, "sec-quiz"));
-
-    // Interview
+    /* ===== Part 3: Do it ===== */
+    page.appendChild(part(3, "Do it", "Hands-on work and portfolio pieces. Claude Code writes the code from ready prompts; you run it, read the results, and write down what you learned.", minutesOf(["lab", "build", "quiz", "publish"])));
+    page.appendChild(section("Practice: the four-step lab", idx(), renderLab(p),
+      (p.labIntro ? p.labIntro + " " : "") + "Each step has a ready prompt: paste it into Claude Code in your portfolio repository, approve its plan, and run the notebook in Colab. Notebooks go into <code>" + stationFolder(p) + "/</code>.", "sec-lab"));
+    if (p.build) page.appendChild(section("Build it in your stack", idx(), renderBuild(p),
+      "One feature of Delivery Copilot, the Node.js app you grow into your capstone. Paste the prompt into Claude Code in your portfolio repository; everything runs free on your laptop. The <a href=\"#portfolio\">portfolio page</a> shows the whole plan.", "sec-build"));
+    page.appendChild(section("Put it in your project plan", idx(), renderPlan(p),
+      "Work items you can copy into a real AI project plan, with typical effort for a small team, followed by the decisions this paper helps you make.", "sec-plan"));
+    page.appendChild(section("Self-check", idx(), renderQuiz(p), "Four quick questions. Wrong answers are fine; each one comes with an explanation.", "sec-quiz"));
     if (p.interview) page.appendChild(section("Interview practice", idx(), renderInterviewList(p.interview.map(function (q, i) { return { key: p.id + i, q: q.q, a: q.a }; })),
       "Questions an interviewer could ask an AI project manager about this paper's ideas. Answer out loud first, then open the guidance. <a href=\"#interviews\">Practice every question with a timer</a>.", "sec-interview"));
-
-    // Publish
     page.appendChild(section("Publish it", idx(), renderPublish(p),
       "Turn this station into a portfolio piece: a results README in your repository and a short public post.", "sec-publish"));
-
-    // Sessions and notes
     page.appendChild(section("Your sessions and notes", idx(), [renderChecklist(p), renderNotes(p)],
       "Tick a session when you finish it. The overview's “Today's session” card always points to the next one.", "sec-progress"));
 
     if (p.next) page.appendChild(h("div", { class: "callout", style: { marginTop: "2.5rem" } },
-      h("span", { class: "callout-k", text: "What this unlocked" }), P.richEl("p", null, p.next)));
+      h("span", { class: "callout-k", text: "Coming up next" }), P.richEl("p", null, p.next)));
 
-    // Pager
     var list = P.sortedPapers();
     var i = list.indexOf(p);
     var pager = h("nav", { class: "pager", "aria-label": "Stations" });
-    if (i > 0) pager.appendChild(h("a", { href: "#" + list[i - 1].id }, h("span", { class: "pk", text: "← Station " + pad(list[i - 1].num) }), h("span", { class: "pn", text: list[i - 1].short })));
-    if (i < list.length - 1) pager.appendChild(h("a", { class: "next", href: "#" + list[i + 1].id }, h("span", { class: "pk", text: "Station " + pad(list[i + 1].num) + " →" }), h("span", { class: "pn", text: list[i + 1].short })));
+    if (i > 0) pager.appendChild(h("a", { href: "#" + list[i - 1].id }, h("span", { class: "pk", text: "← Station " + pad(list[i - 1].num) }), h("span", { class: "pn", text: list[i - 1].plainTitle || list[i - 1].short })));
+    if (i < list.length - 1) pager.appendChild(h("a", { class: "next", href: "#" + list[i + 1].id }, h("span", { class: "pk", text: "Station " + pad(list[i + 1].num) + " →" }), h("span", { class: "pn", text: list[i + 1].plainTitle || list[i + 1].short })));
     page.appendChild(pager);
     return page;
   }
+  function wordCards(words) {
+    return h("div", { class: "word-cards" }, words.map(function (w) {
+      var t = P.term(w[0]);
+      return h("div", { class: "word-card" },
+        h("button", { type: "button", class: "term", "data-term": w[0], text: t ? t.term : w[0] }),
+        h("span", { text: w[1] }));
+    }));
+  }
+
+  /* ---------- Start here ---------- */
+  function renderStart() {
+    var page = h("div", { class: "page" });
+    var story = P.startStory || [];
+    page.appendChild(h("header", { class: "page-head" },
+      h("div", { class: "eyebrow" }, h("span", { text: "Start here" }), h("span", { text: "About 25 minutes" })),
+      h("h1", { text: "How AI works, in nine small steps" }),
+      P.richEl("p", { class: "dek" }, "No jargon, no math, no code. Each step explains one idea with an everyday comparison, introduces at most three new words, and tells you which station goes deeper later. By the end you will have a map of the whole route.")
+    ));
+    page.appendChild(h("div", { class: "loop-grid three" },
+      loopCard("YOU DON'T NEED", "Math", "The route uses intuition and pictures. Where a formula appears, it is explained in words next to it."),
+      loopCard("YOU DON'T NEED", "Python", "Claude Code writes every line of code. You read plain-English notes and run notebooks with one click."),
+      loopCard("YOU DON'T NEED", "To memorize terms", "New words are highlighted everywhere. Click one any time for a one-line meaning.")
+    ));
+    story.forEach(function (ch, i) {
+      var body = [
+        P.richEl("p", { class: "start-text" }, ch.text),
+        h("div", { class: "aside-card" }, h("span", { class: "mini-h", text: "Everyday comparison" }), h("p", { text: ch.everyday }))
+      ];
+      if (ch.example) body.push(P.richEl("p", null, ch.example));
+      if (ch.widget) body.push(figure({ w: ch.widget, opts: ch.opts, k: "Try it", title: i === 0 ? "Guess the next word" : i === 2 ? "Words on a map" : "Who is “it”?", text: i === 2 ? "Click a word to see its nearest neighbours on the map." : "" }, "start"));
+      body.push(h("div", { style: { display: "grid", gap: "0.5rem" } }, h("span", { class: "mini-h", text: "New words in this step" }), wordCards(ch.words)));
+      var laters = (ch.later || []).map(function (id) { var p = P.paper(id); return p ? h("a", { href: "#" + id, text: "Station " + pad(p.num) + " · " + (p.plainTitle || p.short) }) : null; }).filter(Boolean);
+      if (laters.length) body.push(h("p", { class: "small muted" }, "Goes deeper at ", laters.reduce(function (acc, a, j) { if (j) acc.push(j === laters.length - 1 ? " and " : ", "); acc.push(a); return acc; }, []), "."));
+      page.appendChild(h("section", { class: "section start-step", id: "step-" + (i + 1) },
+        h("h2", null, h("span", { class: "idx", text: "Step " + (i + 1) + " of " + story.length }), ch.title), body));
+    });
+
+    var done = P.progress.get("foundations").start;
+    var mark = h("button", { type: "button", class: "btn primary", text: done ? "Done. Go to Station 00" : "I've read it. Mark this session done" });
+    mark.addEventListener("click", function () {
+      P.progress.set("foundations", "start", true);
+      location.hash = "#foundations";
+    });
+    page.appendChild(section("What happens next", null, [
+      h("p", { class: "section-intro", text: "You now have the whole picture in rough form. The stations fill it in one piece at a time, always in the same order: plain English first, then the real terms, then hands-on work." }),
+      tableEl(["Day", "Session", "Time"], [
+        ["1", "This story", "25 min"],
+        ["2", "Station 00 · plain-English intro", "30 min"],
+        ["3", "Station 00 · play with the figures", "40 min"],
+        ["4", "Station 00 · the real terms, gently", "35 min"],
+        ["5", "Station 00 · reading the code notes", "40 min"],
+        ["6", "Station 00 · lab step 1: set up free accounts and run your first notebook", "45 min"],
+        ["7", "Rest, or catch up on a session you skipped", "—"]
+      ]),
+      h("div", { class: "row" }, mark, h("a", { class: "btn", href: "#home", text: "Back to the overview" }))
+    ]));
+    return page;
+  }
+
   function storyCell(n, k, text) {
     return h("div", null, h("span", { class: "story-k" }, h("b", { text: n }), k), P.richEl("p", null, text));
   }
@@ -632,8 +704,9 @@
     sessions.forEach(function (s) {
       var id = "chk-" + p.id + "-" + s.id;
       var input = h("input", { type: "checkbox", id: id, checked: !!state[s.id] });
+      var labelEl = s.route ? h("span", null, s.label + " · ", h("a", { href: "#" + s.route, text: "open" })) : h("span", { text: s.label });
       var row = h("label", { class: "check" + (state[s.id] ? " done" : ""), for: id }, input,
-        h("span", { class: "check-text" }, h("span", { text: s.label }), h("span", { class: "check-min", text: s.min + " min" })));
+        h("span", { class: "check-text" }, labelEl, h("span", { class: "check-min", text: s.min + " min" })));
       input.addEventListener("change", function () {
         P.progress.set(p.id, s.id, input.checked);
         row.classList.toggle("done", input.checked);
@@ -682,7 +755,7 @@
     page.appendChild(h("header", { class: "page-head" },
       h("div", { class: "eyebrow" }, h("span", { text: "How to study" })),
       h("h1", { text: "The study method" }),
-      P.richEl("p", { class: "dek" }, "Reading a paper tells you what the authors claim. Running a small version of it tells you what is true, what is fragile, and what it costs. That second kind of knowledge is what lets an AI project manager estimate, spot risk early, and push back with evidence.")
+      P.richEl("p", { class: "dek" }, "Reading about AI tells you what people claim. Trying a small version yourself tells you what is true, what breaks easily, and what it costs. That hands-on knowledge is what lets an AI project manager estimate well, spot risks early, and push back with evidence.")
     ));
 
     page.appendChild(section("Your daily rhythm", "01", h("div", { class: "loop-grid" },
@@ -693,10 +766,10 @@
     ), "The route is about " + Math.round(P.sortedPapers().reduce(function (a, p) { return a + P.minutesFor(p); }, 0) / 60) + " hours, split into " + P.nextSession().total + " sessions of about 45 minutes. One a day is roughly five hours a week."));
 
     page.appendChild(section("The four-step loop", "02", h("div", { class: "loop-grid" },
-      methodCard("STEP 1", "Reproduce, even partially", "Rebuild the paper's core result at toy scale. You will not match the paper's numbers, and that is fine.", "Teaches you what is essential versus incidental, and how far a demo is from production."),
-      methodCard("STEP 2", "Use your own dataset", "Swap the paper's benchmark for data from your world: tickets, status reports, requirements, release notes.", "Benchmarks flatter models. Your data shows the real gaps, and data preparation is where most AI projects slip."),
-      methodCard("STEP 3", "Compare 2–3 baselines", "Put the fancy method next to something simple and something cheap, using the same data and metric.", "“Is it better than a keyword rule?” is the most valuable question in an AI project review. Baselines answer it."),
-      methodCard("STEP 4", "Document what failed and why", "Keep a failure log: what you tried, what broke, the root cause, and the fix.", "Your failure log becomes your risk register, and your best interview material.")
+      methodCard("STEP 1 · COOK IT SMALL", "Reproduce, even partially", "Like trying a restaurant recipe at home in a small pot: rebuild the paper's main experiment at a tiny scale. Your numbers won't match the paper's, and that is fine.", "You learn which parts of the recipe really matter, and how far a demo is from production."),
+      methodCard("STEP 2 · YOUR INGREDIENTS", "Use your own data", "Cook the same recipe with what is in your own kitchen: tickets, status reports, requirements, release notes instead of the paper's test data.", "Test data flatters AI. Your own data shows the real gaps, and preparing data is where most AI projects slip."),
+      methodCard("STEP 3 · TASTE TEST", "Compare 2–3 simpler options", "Put the fancy dish next to a simple one and a cheap one, tasted the same way. In AI these simpler options are called baselines.", "“Is it better than a keyword rule?” is the most valuable question in an AI project review. Baselines answer it."),
+      methodCard("STEP 4 · KITCHEN NOTES", "Write down what failed and why", "Note what burned, why it burned, and what fixed it. This is your failure log.", "Your failure log becomes your risk register, and your best interview material.")
     ), "Every station's lab follows the same four steps, so by the end you will have run this loop ten times."));
 
     page.appendChild(section("Working with Claude Code", "03", [

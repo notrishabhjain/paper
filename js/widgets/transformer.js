@@ -4,7 +4,8 @@
   var P = window.Portal, h = P.h, s = P.s;
 
   /* ---------------- Self-attention explorer (teaching model) ---------------- */
-  P.widget("attention", function (root) {
+  P.widget("attention", function (root, opts) {
+    var simple = !!(opts && opts.simple);
     var base = ["The", "animal", "didn't", "cross", "the", "street", "because", "it", "was", "too"];
     var ending = "tired";
     var head = "coref";
@@ -60,15 +61,20 @@
     var explain = h("p", { class: "small", "aria-live": "polite" });
     var matrix = h("div", { class: "chart scroll-x" });
 
-    root.appendChild(h("div", { class: "controls" },
-      h("div", { class: "control" }, h("span", { class: "lbl", text: "Attention head" }), headSeg),
-      h("div", { class: "control" }, h("span", { class: "lbl", text: "Last word" }), endSeg),
-      h("div", { class: "control", style: { flex: "0 0 auto", minWidth: "auto" } }, h("span", { class: "lbl", text: "Mask" }), causalBtn)
-    ));
-    root.appendChild(h("p", { class: "kbd-hint", text: "Click a word to make it the query. Shading shows how much it attends to every other word." }));
+    if (simple) {
+      root.appendChild(h("div", { class: "control" }, h("span", { class: "lbl", text: "Change the last word" }), endSeg));
+      root.appendChild(h("p", { class: "kbd-hint", text: "The darker a word, the more attention “it” pays to it. Click any other word to see what it pays attention to." }));
+    } else {
+      root.appendChild(h("div", { class: "controls" },
+        h("div", { class: "control" }, h("span", { class: "lbl", text: "Attention head" }), headSeg),
+        h("div", { class: "control" }, h("span", { class: "lbl", text: "Last word" }), endSeg),
+        h("div", { class: "control", style: { flex: "0 0 auto", minWidth: "auto" } }, h("span", { class: "lbl", text: "Mask" }), causalBtn)
+      ));
+      root.appendChild(h("p", { class: "kbd-hint", text: "Click a word to make it the query. Shading shows how much it attends to every other word." }));
+    }
     root.appendChild(words);
     root.appendChild(explain);
-    root.appendChild(matrix);
+    if (!simple) root.appendChild(matrix);
     root.appendChild(h("p", { class: "fig-note", text: "Teaching model: the weights are hand-set to mimic patterns researchers have found in trained models. A real model has many heads per layer and learns these weights itself." }));
 
     var W = 600;
@@ -95,6 +101,7 @@
       drawMatrix();
     }
     function drawMatrix() {
+      if (simple) return;
       var toks = tokens(), n = toks.length;
       var labelW = 62, cell = Math.max(18, Math.min(34, Math.floor((W - labelW - 8) / n)));
       var Wd = labelW + cell * n + 8, H = 70 + cell * n;

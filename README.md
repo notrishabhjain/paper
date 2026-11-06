@@ -2,7 +2,9 @@
 
 An interactive study route through nine AI papers, built for IT project and program managers moving into AI. Each paper gets a station with plain-language explanations, interactive figures, vocabulary, a four-step lab you run through Claude Code on a free GPU, one feature of a Node.js capstone app, project-plan rows, a project document, and interview questions.
 
-The route is split into 122 sessions of about 45 minutes (roughly 87 hours, or 18 weeks at one session a day). It uses free tools only and keeps the math to intuition.
+It is written for people with no AI background. A **Start here** page explains how AI works in nine small steps, with everyday comparisons and no jargon. Every station then follows the same gradual order: **Part 1, Get the idea** (plain English, an everyday comparison, an example from project work, a few key words), **Part 2, Go deeper** (the real terms and the paper), and **Part 3, Do it** (labs and portfolio work).
+
+The route is split into 133 sessions of 25–45 minutes (roughly 91 hours, or about 18 weeks at one session a day). It uses free tools only and keeps the math to intuition.
 
 | # | Station | Paper | Year |
 |---|---------|-------|------|
@@ -29,7 +31,8 @@ Progress, quiz answers, and notes are saved in your browser's local storage only
 
 ## What each station contains
 
-1. **The 60-second version**: the problem, the idea, the result, and why it matters for AI projects.
+1. **In plain English** (Part 1): where you are on the route, a short jargon-free explanation, an everyday comparison, an example from project work, the few words worth learning now, and three things to remember.
+1. **The paper in 60 seconds** (Part 2): the problem, the idea, the result, and why it matters for AI projects.
 2. **See it work**: interactive figures. Most run real math (attention, positional encoding, BPE tokenization, sampling, the Chinchilla loss law, LoRA parameter counts, RoPE rotations, KV-cache memory). Figures that use made-up numbers to show a mechanism are labeled as teaching models.
 3. **Key concepts**, **annotated code**, and **numbers worth remembering**.
 4. **The four-step lab**: reproduce, use your own data, compare baselines, log failures. Each step has a Claude Code prompt that writes a Colab notebook into your portfolio repository.
@@ -52,6 +55,7 @@ js/content/glossary.js     glossary terms
 js/content/papers-*.js     station content (stories, concepts, labs, quizzes)
 js/widgets/*.js            interactive figures and calculators
 js/content/tailoring.js    sessions, build steps, project-plan rows, interview questions
+js/content/plain.js        the plain-English layer and the nine-step Start story
 js/content/portfolio.js    project-document templates, capstone, general interview bank
 labs/                      lab guide, templates, and reference code
 portfolio-template/        starter files for your own public portfolio repository
