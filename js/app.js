@@ -70,6 +70,7 @@
     else if (name === "interviews") page = renderInterviews();
     else if (name === "start") page = renderStart();
     else { page = renderHome(); name = "home"; }
+    decorate(name.indexOf("term-") === 0 ? "glossary" : name, page);
     main.appendChild(page);
     main.appendChild(footer());
     currentName = name;
@@ -83,6 +84,26 @@
       setTimeout(function () { jumpTo(j.target, j.step); }, 60);
     }
   }
+  /* Plain-English guides for the shared pages, attached under each section heading. */
+  var PAGE_GUIDES = {
+    method: { "Your daily rhythm": "m_rhythm", "The four-step loop": "m_loop", "Working with Claude Code": "m_tools", "Your free toolbelt": "m_belt", "Reading a paper in three passes": "m_read", "Plan your schedule": "m_plan", "Templates": "m_templates" },
+    toolkit: { "Choose an approach": "t_decide", "Estimate training cost": "t_train", "Estimate serving memory": "t_serve", "The lifecycle map": "t_life", "Questions to ask your ML team": "t_questions" },
+    portfolio: { "Two tracks, one set of skills": "p_tracks", "How Delivery Copilot fits together": "p_flow", "Milestones by station": "p_milestones", "The free stack": "p_stack", "Standing instructions for Claude Code": "p_brief", "Your public portfolio": "p_public", "Templates": "p_templates" },
+    interviews: { "Mock interview": "i_mock", "How to answer well": "i_how", "Question bank": "i_bank" }
+  };
+  var HEAD_GUIDES = { interviews: "i_intro", glossary: "g_intro", profile: "a_intro" };
+  function decorate(name, page) {
+    var map = PAGE_GUIDES[name];
+    if (map) page.querySelectorAll("section.section > h2").forEach(function (h2) {
+      var last = h2.lastChild;
+      var title = last && last.nodeType === 3 ? last.nodeValue : h2.textContent;
+      if (map[title] && PG(map[title])) h2.insertAdjacentElement("afterend", guideBox(PG(map[title])));
+    });
+    var headKey = HEAD_GUIDES[name];
+    var head = page.querySelector(".page-head");
+    if (headKey && head && PG(headKey)) head.insertAdjacentElement("afterend", guideBox(PG(headKey)));
+  }
+
   /* Scroll to a section on the current page (hash links would change the route). */
   function jumpTo(target, step) {
     if (target === "sec-lab" && typeof step === "number" && labCtl) labCtl.select(step);
@@ -275,6 +296,16 @@
     return tableEl(["Paper", "Who, when", "Why it matters to you"], rows);
   }
 
+  /* ---------- Plain-English guide box: what a section is, and an everyday comparison ---------- */
+  function guideBox(g, extra) {
+    if (!g) return null;
+    return h("div", { class: "guide" },
+      h("div", null, h("span", { class: "mini-h", text: "What this is" }), P.richEl("p", null, g.what), extra ? P.richEl("p", { class: "guide-extra" }, extra) : null),
+      h("div", null, h("span", { class: "mini-h", text: "Everyday comparison" }), P.richEl("p", null, g.like)));
+  }
+  function SG(key) { return (P.sectionGuides || {})[key]; }
+  function PG(key) { return (P.pageGuides || {})[key]; }
+
   /* ---------- Figure (widget host) ---------- */
   function figure(f, paperId) {
     var body = h("div", { class: "fig-body" });
@@ -282,6 +313,7 @@
       h("div", { class: "figure-head" },
         f.k ? h("span", { class: "fig-k", text: f.k }) : null,
         h("h3", { text: f.title }),
+        f.plain ? h("p", { class: "fig-plain" }, h("b", { text: "In plain words: " }), f.plain) : null,
         f.text ? P.richEl("p", null, f.text) : null
       ),
       body,
@@ -381,15 +413,17 @@
       storyCell("3", "The result", p.story.result)
     );
     var why = h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Why it matters for AI projects" }), P.richEl("p", null, p.whyPM));
-    page.appendChild(section(link ? "The paper in 60 seconds" : "The ideas in 60 seconds", idx(), [P.richEl("p", { class: "section-intro" }, p.oneLiner), storyEl, why], null, "sec-sixty"));
+    page.appendChild(section(link ? "The paper in 60 seconds" : "The ideas in 60 seconds", idx(), [guideBox(SG("sixty")), P.richEl("p", { class: "section-intro" }, p.oneLiner), storyEl, why], null, "sec-sixty"));
 
     var concepts = h("div", { class: "concepts" }, p.concepts.map(function (c, i) {
+      var like = p.conceptLike && p.conceptLike[i];
       return h("details", { class: "concept", open: i === 0 ? true : null },
         h("summary", null,
           h("span", null, h("span", { class: "c-name", text: c.name }), P.richEl("span", { class: "c-plain" }, c.plain)),
           h("span", { class: "chev", "aria-hidden": "true", text: "›" })
         ),
         h("div", { class: "concept-body" },
+          like ? h("div", { class: "concept-like" }, h("span", { class: "k", text: "Everyday comparison" }), P.richEl("p", null, like)) : null,
           h("div", null, h("span", { class: "k", text: "How it works" }), P.richEl("p", null, c.how)),
           h("div", null, h("span", { class: "k", text: "Where you meet it in projects" }), P.richEl("p", null, c.product))
         )
@@ -399,36 +433,29 @@
       var t = P.term(id);
       return h("button", { type: "button", class: "chip", "data-term": id, text: t ? t.term : id });
     }));
-    page.appendChild(section("Key concepts", idx(), [concepts, h("h3", { text: "All the vocabulary from this paper" }), vocab],
-      "Each concept opens with one plain sentence. Expand it for how it works and where you will meet it at work.", "sec-concepts"));
+    page.appendChild(section("Key concepts", idx(), [guideBox(SG("concepts")), concepts, h("h3", { text: "All the vocabulary from this paper" }), vocab], null, "sec-concepts"));
 
-    if (p.code) page.appendChild(section("Read the code", idx(), codeAnnot(p.code),
-      "You will never need to write this. Read the plain-English note beside each line, so the code Claude Code writes for you stops looking foreign.", "sec-code"));
+    if (p.code) page.appendChild(section("Read the code", idx(), [guideBox(SG("code")), codeAnnot(p.code)], null, "sec-code"));
 
-    page.appendChild(section("Numbers worth remembering", idx(), h("div", { class: "numbers" }, p.numbers.map(function (x) {
+    page.appendChild(section("Numbers worth remembering", idx(), [guideBox(SG("numbers")), h("div", { class: "numbers" }, p.numbers.map(function (x) {
       return h("div", { class: "number" }, h("span", { class: "n", text: x.value }), P.richEl("span", { class: "l" }, x.label));
-    })), null, "sec-numbers"));
+    }))], null, "sec-numbers"));
 
-    page.appendChild(section("Read the paper", idx(), h("div", { class: "prose" },
+    page.appendChild(section("Read the paper", idx(), [guideBox(SG("read"), "Read only the parts listed, skip the math, and come back after the lab, when the tables make more sense."), h("div", { class: "prose" },
       h("ol", null, p.reading.map(function (r) { return P.richEl("li", null, r); })),
       link ? h("p", null, h("a", { class: "btn", href: link, target: "_blank", rel: "noopener", text: (p.arxiv ? "arXiv:" + p.arxiv : "Read the paper (PDF)") + " ↗" })) : null
-    ), "Optional on a first pass. Read only the parts listed, skip the math, and come back after the lab when the tables make more sense.", "sec-read"));
+    )], null, "sec-read"));
 
     /* ===== Part 3: Do it ===== */
     page.appendChild(part(3, "Do it", "Hands-on work and portfolio pieces. Claude Code writes the code from ready prompts; you run it, read the results, and write down what you learned.", minutesOf(["lab", "build", "quiz", "publish"])));
-    page.appendChild(section("Practice: the four-step lab", idx(), renderLab(p),
-      (p.labIntro ? p.labIntro + " " : "") + "Each step has a ready prompt: paste it into Claude Code in your portfolio repository, approve its plan, and run the notebook in Colab. Notebooks go into <code>" + stationFolder(p) + "/</code>.", "sec-lab"));
-    if (p.build) page.appendChild(section("Build it in your stack", idx(), renderBuild(p),
-      "One feature of Delivery Copilot, the Node.js app you grow into your capstone. Paste the prompt into Claude Code in your portfolio repository; everything runs free on your laptop. The <a href=\"#portfolio\">portfolio page</a> shows the whole plan.", "sec-build"));
-    page.appendChild(section("Put it in your project plan", idx(), renderPlan(p),
-      "Work items you can copy into a real AI project plan, with typical effort for a small team, followed by the decisions this paper helps you make.", "sec-plan"));
-    page.appendChild(section("Self-check", idx(), renderQuiz(p), "Four quick questions. Wrong answers are fine; each one comes with an explanation.", "sec-quiz"));
-    if (p.interview) page.appendChild(section("Interview practice", idx(), renderInterviewList(p.interview.map(function (q, i) { return { key: p.id + i, q: q.q, a: q.a }; })),
-      "Questions an interviewer could ask an AI project manager about this paper's ideas. Answer out loud first, then open the guidance. <a href=\"#interviews\">Practice every question with a timer</a>.", "sec-interview"));
-    page.appendChild(section("Publish it", idx(), renderPublish(p),
-      "Turn this station into a portfolio piece: a results README in your repository and a short public post.", "sec-publish"));
-    page.appendChild(section("Your sessions and notes", idx(), [renderChecklist(p), renderNotes(p)],
-      "Tick a session when you finish it. The overview's “Today's session” card always points to the next one.", "sec-progress"));
+    page.appendChild(section("Practice: the four-step lab", idx(), [guideBox(SG("lab"), p.labIntro), renderLab(p),
+      P.richEl("p", { class: "small muted" }, "How each step works: copy its prompt into Claude Code in your portfolio repository, approve the plan it proposes, then open the notebook it writes in Google Colab and press Run. Notebooks go into <code>" + stationFolder(p) + "/</code>.")], null, "sec-lab"));
+    if (p.build) page.appendChild(section("Build it in your stack", idx(), [guideBox(SG("build"), "Everything runs free on your laptop. The <a href=\"#portfolio\">portfolio page</a> shows the whole plan."), renderBuild(p)], null, "sec-build"));
+    page.appendChild(section("Put it in your project plan", idx(), [guideBox(SG("plan"), "Effort ranges assume a small team; adjust them to yours.")].concat(renderPlan(p)), null, "sec-plan"));
+    page.appendChild(section("Self-check", idx(), [guideBox(SG("quiz")), renderQuiz(p)], null, "sec-quiz"));
+    if (p.interview) page.appendChild(section("Interview practice", idx(), [guideBox(SG("interview"), "<a href=\"#interviews\">Practice every question with a timer</a>."), renderInterviewList(p.interview.map(function (q, i) { return { key: p.id + i, q: q.q, a: q.a }; }))], null, "sec-interview"));
+    page.appendChild(section("Publish it", idx(), [guideBox(SG("publish"))].concat(renderPublish(p)), null, "sec-publish"));
+    page.appendChild(section("Your sessions and notes", idx(), [guideBox(SG("progress"), "Tick a session when you finish it. The overview's “Today's session” card always points to the next one."), renderChecklist(p), renderNotes(p)], null, "sec-progress"));
 
     if (p.next) page.appendChild(h("div", { class: "callout", style: { marginTop: "2.5rem" } },
       h("span", { class: "callout-k", text: "Coming up next" }), P.richEl("p", null, p.next)));
@@ -554,6 +581,7 @@
   }
   function labPanel(st, p, i) {
     var panel = h("div", { class: "tab-panel" });
+    if (p.labPlain && p.labPlain[i]) panel.appendChild(h("p", { class: "lab-plain" }, h("b", { text: "In plain words: " }), p.labPlain[i]));
     panel.appendChild(P.richEl("p", { class: "goal" }, st.goal));
     if (st.do) panel.appendChild(h("div", null, h("h4", { text: "Do this" }), h("ol", { class: "steps" }, st.do.map(function (d) { return P.richEl("li", null, d); }))));
     if (st.ideas) panel.appendChild(h("div", null, h("h4", { text: "Dataset ideas from your world" }), h("ul", null, st.ideas.map(function (d) { return P.richEl("li", null, d); }))));
@@ -967,7 +995,9 @@
       h("h1", { text: "Glossary" }),
       P.richEl("p", { class: "dek" }, "Every term used on the route, in plain language with an analogy, and the station where it first matters.")
     ));
-    var cats = ["All"];
+    var cats = ["All", "Start here"];
+    var startWords = {};
+    (P.startStory || []).forEach(function (ch) { (ch.words || []).forEach(function (w) { startWords[w[0]] = true; }); });
     P.glossary.forEach(function (t) { if (cats.indexOf(t.cat) < 0) cats.push(t.cat); });
     var query = "", cat = "All";
     var search = h("input", { type: "search", id: "gloss-search", placeholder: "Search terms, e.g. token, LoRA, perplexity", "aria-label": "Search the glossary" });
@@ -981,7 +1011,8 @@
       P.clear(list);
       var q = query.trim().toLowerCase();
       var shown = sorted.filter(function (t) {
-        if (cat !== "All" && t.cat !== cat) return false;
+        if (cat === "Start here" && !startWords[t.id]) return false;
+        if (cat !== "All" && cat !== "Start here" && t.cat !== cat) return false;
         if (!q) return true;
         return (t.term + " " + t.def + " " + (t.aka || "")).toLowerCase().indexOf(q) >= 0;
       });
