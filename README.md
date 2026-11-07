@@ -25,9 +25,26 @@ No build step and no install. Either:
 
 - **Double-click `index.html`** to open it in your browser, or
 - **Serve the folder** (`python3 -m http.server` in this directory, then visit http://localhost:8000), or
-- **Publish with GitHub Pages**: repository Settings → Pages → Deploy from branch → `main` / root.
+- **Deploy it on Vercel** (steps below), or **GitHub Pages**: repository Settings → Pages → Deploy from branch → `main` / root.
 
 Progress, quiz answers, and notes are saved in your browser's local storage only.
+
+## Deploy on Vercel
+
+The site is plain HTML, CSS, and JavaScript with no build step, so Vercel serves it as-is. `vercel.json` adds a few security headers and makes sure updated CSS and JavaScript are picked up after each deploy.
+
+1. Merge the latest pull request into `main` on GitHub.
+2. In Vercel, choose **Add New → Project** and import this GitHub repository.
+3. Use these settings:
+   - **Framework Preset:** Other
+   - **Root Directory:** `./` (the repository root)
+   - **Build Command:** leave empty (or turn the override on and leave it blank)
+   - **Output Directory:** `./` (the repository root)
+   - **Install Command:** leave empty
+4. Click **Deploy**. Vercel gives you a `*.vercel.app` address in under a minute.
+5. Under **Settings → Git**, set the **Production Branch** to `main`, so every merge to `main` updates the live site and every pull request gets its own preview link.
+
+Progress and notes are stored in each visitor's browser, so they are separate on the Vercel site and on the Claude preview link.
 
 ## What each station contains
 
@@ -56,6 +73,8 @@ js/content/papers-*.js     station content (stories, concepts, labs, quizzes)
 js/widgets/*.js            interactive figures and calculators
 js/content/tailoring.js    sessions, build steps, project-plan rows, interview questions
 js/content/plain.js        the plain-English layer and the nine-step Start story
+js/content/plain-deeper.js plain guides for every later section and page, concept comparisons
+vercel.json                Vercel settings (static site, no build step)
 js/content/portfolio.js    project-document templates, capstone, general interview bank
 labs/                      lab guide, templates, and reference code
 portfolio-template/        starter files for your own public portfolio repository

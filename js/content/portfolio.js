@@ -180,16 +180,16 @@
   /* ---------- Capstone ---------- */
   P.capstone = {
     stack: [
-      ["Node.js 20 + Express", "The app and its API", "Free"],
-      ["Postgres 16 + pgvector", "Documents, chunks, embeddings, evaluation results", "Free (Docker, or the Neon free tier)"],
-      ["MongoDB 7", "Request logs and reviewer feedback", "Free (Docker, or the Atlas free tier)"],
-      ["Ollama", "Runs open LLMs such as Llama 3.2 and Qwen 2.5 on your laptop", "Free"],
-      ["Transformers.js", "Runs a small embedding model inside Node", "Free"],
-      ["js-tiktoken", "Counts tokens", "Free"],
-      ["Claude Code", "Writes the code from the prompts at each station", "Your existing access"],
-      ["Google Colab free tier", "GPU notebooks for the paper labs", "Free"]
+      ["Node.js 20 + Express", "Runs the app and its web endpoints (the API)", "Free"],
+      ["Postgres 16 + pgvector", "Stores documents and their meaning-numbers (embeddings); pgvector lets Postgres find text by meaning, not just keywords", "Free (Docker, or the Neon free tier)"],
+      ["MongoDB 7", "Keeps a log of every question, answer, and piece of reviewer feedback", "Free (Docker, or the Atlas free tier)"],
+      ["Ollama", "Runs free AI models, such as Llama 3.2 and Qwen 2.5, on your own laptop", "Free"],
+      ["Transformers.js", "Turns text into meaning-numbers inside Node, with a small free model", "Free"],
+      ["js-tiktoken", "Counts tokens, the pieces of text AI services charge by", "Free"],
+      ["Claude Code", "Writes the code from the prompt at each station", "Your existing access"],
+      ["Google Colab free tier", "Free borrowed computers with graphics chips, for the paper labs", "Free"]
     ],
-    flow: ["Project documents", "Ingest and chunk (Postgres)", "Embed (Transformers.js + pgvector)", "Retrieve top chunks", "Prompt from the registry", "Generate (Ollama)", "Answer with citations", "Log and feedback (MongoDB)", "Evaluation harness and reports"]
+    flow: ["Your project documents", "Cut into index cards (chunking)", "File each card by meaning (embeddings)", "Find the most relevant cards (retrieval)", "Pick the current instructions (registry)", "Write an answer (local AI model)", "Answer with sources cited", "Log questions and feedback", "Check quality and report (evaluation)"]
   };
 
   /* ---------- General interview bank: AI project and program manager ---------- */
