@@ -1,10 +1,19 @@
 # Paper Trail
 
-An interactive study route through nine AI papers, built for IT project and program managers moving into AI. Each paper gets a station with plain-language explanations, interactive figures, vocabulary, a four-step lab you run through Claude Code on a free GPU, one feature of a Node.js capstone app, project-plan rows, a project document, and interview questions.
+Four interactive study routes for IT project and program managers moving into AI. Written for people with no AI background: every page starts in plain English with an everyday comparison and an example from project work, then brings in the real terms, then hands-on practice with free tools and ready prompts for Claude Code.
 
-It is written for people with no AI background. A **Start here** page explains how AI works in nine small steps, with everyday comparisons and no jargon. Every station then follows the same gradual order: **Part 1, Get the idea** (plain English, an everyday comparison, an example from project work, a few key words), **Part 2, Go deeper** (the real terms and the paper), and **Part 3, Do it** (labs and portfolio work).
+A **Start here** page explains how AI works in nine small steps. A **Library** explains every paper behind Routes 2 to 4 in two plain sentences each. A **Glossary** of 200+ terms opens from any highlighted word.
 
-The route is split into 133 sessions of 25–45 minutes (roughly 91 hours, or about 18 weeks at one session a day). It uses free tools only and keeps the math to intuition.
+| Route | What it covers | Size |
+|-------|----------------|------|
+| 1 · How AI models work | Ten stations, one landmark paper each, from the Transformer to FlashAttention, with labs on a free GPU and a Node.js capstone (Delivery Copilot) | 133 sessions, about 91 hours |
+| 2 · How AI agents work | The map, context, the loop, the gate, the harness, evals, and production | 7 units, 41 sessions, about 25 hours |
+| 3 · Build your second brain | A personal knowledge base an AI agent maintains: the idea, setup, ingestion, structuring, graphs, agents, retrieval, outputs, upkeep, and troubleshooting | 10 units, 57 sessions, about 35 hours |
+| 4 · Deep dives | Knowledge graphs, System One models (Jev), agent harnesses, loop engineering, and evals | 5 handbooks, 30 sessions, about 18 hours |
+
+Routes 2 to 4 are adapted from [Second Brain OS](https://secondbrainos.dev/) (MIT license), rewritten for readers new to AI, with new interactive figures (flows, layer stacks, rings, comparisons, a context-budget calculator, loop and gate simulators, a trace checker, and a knowledge graph you can walk), short lessons, quizzes, interview questions, and practice prompts.
+
+### Route 1 stations
 
 | # | Station | Paper | Year |
 |---|---------|-------|------|
@@ -18,6 +27,8 @@ The route is split into 133 sessions of 25–45 minutes (roughly 91 hours, or ab
 | 07 | LoRA | Low-Rank Adaptation of Large Language Models | 2021 |
 | 08 | LLaMA | Open and Efficient Foundation Language Models | 2023 |
 | 09 | FlashAttention | Fast and Memory-Efficient Exact Attention with IO-Awareness | 2022 |
+
+Pick a **daily route** on the overview page; the “Today's session” card follows it and moves on to the next route when it is done.
 
 ## Open the portal
 
@@ -45,6 +56,12 @@ The site is plain HTML, CSS, and JavaScript with no build step, so Vercel serves
 5. Under **Settings → Git**, set the **Production Branch** to `main`, so every merge to `main` updates the live site and every pull request gets its own preview link.
 
 Progress and notes are stored in each visitor's browser, so they are separate on the Vercel site and on the Claude preview link.
+
+## What each unit contains (Routes 2 to 4)
+
+1. **In plain English** (Part 1): where you are, a short explanation, an everyday comparison, an example from project work, a few key words, three things to remember, and interactive figures.
+2. **Lessons** (Part 2): short lessons, one idea each, grouped into sessions of 25 to 45 minutes, with comparisons, annotated examples, and “for your project” notes.
+3. **Practice** (Part 3): a Claude Code prompt that builds something small with free tools (Ollama, open-source libraries, the free Obsidian app), a self-check quiz, interview questions, and sources.
 
 ## What each station contains
 
@@ -76,12 +93,16 @@ js/content/plain.js        the plain-English layer and the nine-step Start story
 js/content/plain-deeper.js plain guides for every later section and page, concept comparisons
 vercel.json                Vercel settings (static site, no build step)
 js/content/portfolio.js    project-document templates, capstone, general interview bank
+js/content/units-*.js      Routes 2 to 4: agents, second brain, and deep-dive units
+js/content/glossary-agents.js  glossary terms for Routes 2 to 4
+js/content/library.js      the Library: every paper and reading behind Routes 2 to 4
+js/widgets/diagrams.js     data-driven diagrams and simulators used by the units
 labs/                      lab guide, templates, and reference code
 portfolio-template/        starter files for your own public portfolio repository
 scripts/export-templates.js  regenerates portfolio-template/ from js/content/portfolio.js
 ```
 
-To edit content, change the objects in `js/content/`. Text can link glossary terms with `[[term-id]]` or `[[term-id|label]]`.
+To edit content, change the objects in `js/content/`. Text can link glossary terms with `[[term-id]]` or `[[term-id|label]]`. A unit's figures name a widget (`flow`, `layers`, `rings`, `compare`, `bars`, `tree`, `funnel`, `kgraph`, and others) and pass its data in `opts`.
 
 ## Labs and capstone
 

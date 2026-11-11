@@ -70,12 +70,13 @@
     paint();
   });
 
-  /* ---------------- Schedule planner (daily ~45-minute sessions) ---------------- */
+  /* ---------------- Schedule planner (daily sessions, for any route) ---------------- */
   P.widget("schedule", function (root) {
     var hours = P.store.get("hours-per-week", 5);
+    var track = P.focusTrack ? P.focusTrack() : "models";
     var list = h("div");
     var readout = P.readout([
-      { key: "sessions", label: "Sessions on the route" },
+      { key: "sessions", label: "Sessions" },
       { key: "total", label: "Total study time" },
       { key: "weeks", label: "Weeks at this pace" },
       { key: "finish", label: "Finish around" }
@@ -84,16 +85,24 @@
       format: function (v) { return v + " h ≈ " + Math.round((v * 60) / P.SESSION_MIN) + " sessions"; },
       onInput: function (v) { hours = v; P.store.set("hours-per-week", v); paint(); } });
     root.appendChild(h("div", { class: "controls" }, slider));
+    if (P.tracks) root.appendChild(h("div", { class: "scroll-x" }, P.seg(P.tracks.map(function (t) { return { value: t.id, label: "Route " + t.num + ": " + t.short }; }).concat([{ value: "all", label: "All four" }]), track,
+      function (v) { track = v; paint(); }, "Route to plan")));
     root.appendChild(readout);
     root.appendChild(list);
+    function items() {
+      if (!P.tracks) return P.sortedPapers();
+      if (track === "all") return P.tracks.reduce(function (a, t) { return a.concat(P.itemsFor(t.id)); }, []);
+      return P.itemsFor(track);
+    }
+    function tag(p) { return P.itemTag ? P.itemTag(p) : "Station " + (p.num < 10 ? "0" : "") + p.num; }
     function paint() {
-      var papers = P.sortedPapers();
+      var papers = items();
       var totalMin = papers.reduce(function (a, p) { return a + P.minutesFor(p); }, 0);
       var totalSessions = papers.reduce(function (a, p) { return a + P.sessionsFor(p).length; }, 0);
       var perWeek = hours * 60;
       var weeks = Math.ceil(totalMin / perWeek);
       var finish = new Date(Date.now() + weeks * 7 * 864e5);
-      readout.update("sessions", String(totalSessions), "about 45 minutes each");
+      readout.update("sessions", String(totalSessions), "30 to 45 minutes each");
       readout.update("total", Math.round(totalMin / 60) + " h");
       readout.update("weeks", String(weeks), "one session a day at " + hours + " h/week");
       readout.update("finish", finish.toLocaleDateString("en-US", { month: "short", year: "numeric" }));
@@ -104,14 +113,14 @@
         cum += P.minutesFor(p);
         var end = Math.max(start, Math.ceil(cum / perWeek));
         return h("tr", null,
-          h("td", null, h("a", { href: "#" + p.id, text: (p.num < 10 ? "0" : "") + p.num + " · " + p.short })),
+          h("td", null, h("a", { href: "#" + p.id, text: tag(p) + " · " + p.short })),
           h("td", { class: "tnum", text: String(P.sessionsFor(p).length) }),
           h("td", { class: "tnum", text: P.hoursFor(p) + " h" }),
           h("td", { class: "tnum", text: start === end ? "Week " + start : "Weeks " + start + "–" + end })
         );
       });
       list.appendChild(h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" },
-        h("thead", null, h("tr", null, h("th", { text: "Station" }), h("th", { text: "Sessions" }), h("th", { text: "Time" }), h("th", { text: "When" }))),
+        h("thead", null, h("tr", null, h("th", { text: "Station or unit" }), h("th", { text: "Sessions" }), h("th", { text: "Time" }), h("th", { text: "When" }))),
         h("tbody", null, rows))));
     }
     paint();

@@ -768,7 +768,7 @@
     ],
     sources: [
       { t: "ripgrep", url: "https://github.com/BurntSushi/ripgrep", note: "free, very fast text search" },
-      { t: "Dataview for Obsidian", url: "https://blacksmithgu.github.io/obsidian-dataview/", note: "free plugin" }
+      { t: "Dataview for Obsidian", url: "https://github.com/blacksmithgu/obsidian-dataview", note: "free plugin" }
     ],
     next: "Unit 3.08 turns answers into output: writing, research reports, publishing a public subset, and learning from your own pages."
   });

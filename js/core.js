@@ -72,7 +72,7 @@
     var n = item.num < 10 ? "0" + item.num : String(item.num);
     if (!item.track) return "Station " + n;
     var t = P.track(item.track);
-    return (t && t.id === "deep" ? "Deep dive " : "Unit " + t.num + ".") + n;
+    return t && t.id === "deep" ? "Deep dive " + item.num : "Unit " + t.num + "." + n;
   };
 
   /* ---------- DOM ---------- */

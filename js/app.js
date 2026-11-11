@@ -1141,7 +1141,7 @@
       methodCard("PASS 3 · AFTER THE LAB", "Detail", "Re-read the experiments section now that you have run one. The tables will make sense.", "Compare their setup with yours in your experiment card.")
     ), "Adapted from S. Keshav's “How to Read a Paper”. Nobody reads a paper once, front to back."));
 
-    page.appendChild(section("Plan your schedule", "06", figure({ w: "schedule", k: "Planner", title: "How long will the route take?", text: "Set the hours you can give each week. Estimates include reading, figures, all four lab steps, the build step, interview practice, and publishing." }, "method")));
+    page.appendChild(section("Plan your schedule", "06", figure({ w: "schedule", k: "Planner", title: "How long will each route take?", text: "Set the hours you can give each week and pick a route. Route 1 estimates include reading, figures, all four lab steps, the build step, interview practice, and publishing; Routes 2 to 4 include the intro, lessons, practice, and self-check." }, "method")));
 
     page.appendChild(section("Templates", "07", h("div", { class: "two-col" },
       promptBox("Experiment card (one per lab run)", EXPERIMENT_CARD),
@@ -1234,13 +1234,31 @@
           h("li", { text: "Write about what you learned, not about confidential projects." }))))
     ], "Recruiters and hiring managers skim. A top-level README with a progress table and one-line results per station does more than polished notebooks."));
 
+    var unitRows = P.tracks.filter(function (t) { return t.id !== "models"; }).reduce(function (rows, t) {
+      return rows.concat(P.unitsFor(t.id).filter(function (u) { return u.practice; }).map(function (u) {
+        return [h("a", { href: "#" + u.id, text: P.itemTag(u) + " · " + u.short }), u.practice.title, h("code", { text: unitFolder(u) + "/" })];
+      }));
+    }, []);
+    page.appendChild(section("More portfolio pieces from Routes 2 to 4", "07", [
+      tableEl(["Unit", "What you build", "Folder"], unitRows),
+      h("div", { class: "two-col" },
+        h("div", { class: "pm-card" }, h("span", { class: "q", text: "Public by design" }), h("ul", { class: "small" },
+          h("li", { text: "agents/: a tiny agent, a bounded loop, a gate, a hardened harness, an eval suite, and a gateway for Delivery Copilot." }),
+          h("li", { text: "course-vault/: a second brain about what you learn here, with a small opted-in digital garden you can link from your CV." }),
+          h("li", { text: "deep-dives/: a typed graph layer, a decision router, a guarded harness, a ratcheted loop, and a CI eval gate." }))),
+        h("div", { class: "pm-card" }, h("span", { class: "q", text: "Keep private" }), h("ul", { class: "small" },
+          h("li", { text: "Real work items you label in Unit 2.03 (keep data/ out of Git; publish only the metrics)." }),
+          h("li", { text: "Your work notes: a separate vault outside the repository, ingested with a local model if policy requires (Unit 3.09)." }),
+          h("li", { text: "Anything about clients, colleagues, or confidential projects." }))))
+    ], "Each unit's practice leaves something you can show. Together they demonstrate that you can scope, build, test, and govern an AI agent, which is exactly what AI program roles ask for."));
+
     var docs = Object.keys(P.templates).map(function (k) {
       var t = P.templates[k], p = P.paper(t.station);
       return h("details", { class: "concept" },
         h("summary", null, h("span", null, h("span", { class: "c-name", text: t.title }), h("span", { class: "c-plain", text: p ? "Drafted at Station " + pad(p.num) + " · " + p.short : "" })), h("span", { class: "chev", "aria-hidden": "true", text: "›" })),
         h("div", { style: { padding: "0 1.1rem 1rem" } }, promptBox(t.title, t.text)));
     });
-    page.appendChild(section("Templates", "07", [
+    page.appendChild(section("Templates", "08", [
       h("div", { class: "two-col" }, promptBox("Station README", P.portfolioTemplates.readme), promptBox("Post", P.portfolioTemplates.post)),
       h("h3", { text: "The AI project manager's document kit" }),
       h("div", { class: "concepts" }, docs)
@@ -1274,7 +1292,7 @@
     var bank = order.map(function (g) {
       return h("div", { style: { display: "grid", gap: "0.5rem" } }, h("h3", { text: g }), renderInterviewList(groups[g].map(function (q) { return { key: q.key, q: q.q, a: q.a }; })));
     });
-    page.appendChild(section("Question bank", "03", bank, "General questions first, then one group per station. Status marks come from the mock interview above."));
+    page.appendChild(section("Question bank", "03", bank, "General questions first, then one group per station and unit. Status marks come from the mock interview above."));
     return page;
   }
 

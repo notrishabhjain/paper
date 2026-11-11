@@ -47,7 +47,8 @@ Portal.pageGuides = {
   i_how: { what: "Four habits that make answers sound experienced, even early in an AI career.", like: "Like a presentation structure you can reuse every time." },
   i_bank: { what: "Every question, grouped by topic and then by station.", like: "Like the index of a revision guide." },
   /* Glossary and About you */
-  g_intro: { what: "Look up any word as you meet it. Each entry has a plain meaning, an everyday comparison, and the station where the word first matters. New here? Choose “Start here” below to see only the words from the nine-step story.", like: "Like a phrasebook for a country you are visiting: you look words up as you need them; nobody reads it cover to cover." },
+  g_intro: { what: "Look up any word as you meet it. Each entry has a plain meaning, an everyday comparison, and the station or unit where the word first matters. New here? Choose “Start here” below to see only the words from the nine-step story.", like: "Like a phrasebook for a country you are visiting: you look words up as you need them; nobody reads it cover to cover." },
+  l_intro: { what: "Every paper, whitepaper, article, and book that Routes 2 to 4 draw on, each explained in two plain sentences, grouped by topic, with the unit where it matters most. Items marked “read with care” are recent preprints that have not been peer reviewed yet.", like: "Like the bibliography at the back of a textbook, except each entry tells you in plain words why it is there and which chapter to read it with." },
   a_intro: { what: "A few questions about your background and goals. Your answers stay in this browser; copy them into a chat with Claude to get suggestions tuned to you.", like: "Like the intake form a coach asks you to fill in before the first session." }
 };
 

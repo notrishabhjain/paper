@@ -1105,6 +1105,9 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); }
 .tc-stats { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font-size: var(--fs-sm); color: var(--ink-2); }
 .tc-stats b { color: var(--ink); font-weight: 600; }
 .track-card .row { margin-top: 0.35rem; }
+.track-card { display: flex; flex-direction: column; }
+.track-card .tc-stats { margin-top: auto; padding-top: 0.25rem; }
+.guide + .jump { margin-top: 1.25rem; }
 .btn[aria-pressed="true"] { border-color: var(--good); color: var(--good); }
 
 .route-lists { display: grid; gap: 0.6rem; }
