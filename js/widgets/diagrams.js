@@ -574,7 +574,7 @@
   /* ---------------- Knowledge graph: shapes and health numbers, or "what connects X and Y" ---------------- */
   var KG_NAMES = ["Transformer", "Attention", "Tokens", "Context", "Scaling", "LoRA", "Copilot", "Evals", "Golden set", "Risks", "Budget", "Standups"];
   var KG_PRESETS = {
-    healthy: { label: "Well linked", edges: [[0, 1], [0, 2], [0, 3], [1, 3], [2, 3], [0, 4], [4, 5], [0, 5], [6, 7], [7, 8], [6, 9], [9, 10], [6, 10], [6, 11], [9, 11], [7, 9], [3, 6], [4, 10]],
+    healthy: { label: "Well linked", edges: [[0, 1], [0, 2], [0, 3], [1, 3], [2, 3], [0, 4], [4, 5], [0, 5], [6, 7], [7, 8], [6, 8], [6, 9], [9, 10], [6, 10], [6, 11], [9, 11], [7, 9], [3, 6], [4, 10]],
       text: "Dense inside each topic, a couple of bridges between topics (Context to Copilot, Scaling to Budget). Most pages are two or three hops from each other. This is the shape to aim for." },
     star: { label: "Star", edges: [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [0, 7], [0, 8], [0, 9], [0, 10], [0, 11]],
       text: "Everything links only to one broad hub page. Paths are short, but always through the hub, so the graph says nothing beyond “these are all in my vault”. Cause: linking to broad concepts instead of specific ones." },
@@ -600,11 +600,9 @@
         pos[m] = [c[m][0] + 0.11 * Math.cos(ang), c[m][1] + 0.17 * Math.sin(ang)];
       }
     } else {
-      for (var q = 0; q < n; q++) {
-        var left = q < 6, idx = left ? q : q - 6;
-        var ang2 = idx / 6 * Math.PI * 2 + (left ? 0.3 : -0.2);
-        pos[q] = [(left ? 0.27 : 0.73) + 0.17 * Math.cos(ang2), 0.5 + 0.34 * Math.sin(ang2)];
-      }
+      // Two topic clusters (models on the left, project work on the right) with two bridges.
+      pos = [[0.14, 0.5], [0.08, 0.15], [0.32, 0.52], [0.34, 0.2], [0.3, 0.82], [0.08, 0.85],
+        [0.62, 0.22], [0.9, 0.15], [0.94, 0.48], [0.78, 0.5], [0.62, 0.8], [0.8, 0.9]];
     }
     return pos;
   }
