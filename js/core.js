@@ -33,6 +33,48 @@
     return P.papers.slice().sort(function (a, b) { return a.num - b.num; });
   };
 
+  /* ---------- Routes (tracks) and units ----------
+     Route 1 is the ten paper stations. Routes 2 to 4 are made of "units": shorter pages built from
+     Second Brain OS (secondbrainos.dev, MIT license), each with lessons, figures, practice, and a quiz. */
+  P.tracks = [
+    { id: "models", num: 1, name: "How AI models work", short: "AI models", color: "var(--c1)",
+      desc: "Ten stations, one landmark paper each, from the Transformer to FlashAttention. What a model is, how it learns, and what it costs.",
+      who: "Start here if AI is new to you. Everything else builds on Station 00." },
+    { id: "agents", num: 2, name: "How AI agents work", short: "AI agents", color: "var(--c2)",
+      desc: "Seven units on turning a model into an agent that plans and acts: what it sees, how it loops, cheap decisions, the safety setup around it, testing, and running it in production.",
+      who: "Needs only Station 00 of Route 1. The most useful route for leading AI projects at work." },
+    { id: "brain", num: 3, name: "Build your second brain", short: "Second brain", color: "var(--c3)",
+      desc: "Ten units on a personal knowledge base that an AI agent maintains for you, in plain text files you own. You build one for this course as you go.",
+      who: "Needs no AI background. Pairs well with Route 2, which explains the agent behind it." },
+    { id: "deep", num: 4, name: "Deep dives", short: "Deep dives", color: "var(--c7)",
+      desc: "Five optional handbooks that go further on one layer each: knowledge graphs, cheap typed decisions, harnesses, loops, and evals.",
+      who: "Take any of them after the matching unit in Route 2." }
+  ];
+  P.track = function (id) {
+    for (var i = 0; i < P.tracks.length; i++) if (P.tracks[i].id === id) return P.tracks[i];
+    return null;
+  };
+  P.units = P.units || [];
+  P.addUnit = function (u) { P.units.push(u); };
+  P.unit = function (id) {
+    for (var i = 0; i < P.units.length; i++) if (P.units[i].id === id) return P.units[i];
+    return null;
+  };
+  P.unitsFor = function (trackId) {
+    return P.units.filter(function (u) { return u.track === trackId; }).sort(function (a, b) { return a.num - b.num; });
+  };
+  /* Everything on a route, in order: stations for Route 1, units for the others. */
+  P.itemsFor = function (trackId) { return trackId === "models" ? P.sortedPapers() : P.unitsFor(trackId); };
+  P.item = function (id) { return P.paper(id) || P.unit(id); };
+  P.trackOf = function (item) { return item.track || "models"; };
+  /* How an item is named in lists: "Station 03" or "Unit 2.03" */
+  P.itemTag = function (item) {
+    var n = item.num < 10 ? "0" + item.num : String(item.num);
+    if (!item.track) return "Station " + n;
+    var t = P.track(item.track);
+    return (t && t.id === "deep" ? "Deep dive " : "Unit " + t.num + ".") + n;
+  };
+
   /* ---------- DOM ---------- */
   function applyAttrs(node, attrs, isSvg) {
     if (!attrs) return;
@@ -132,6 +174,7 @@
   P.SESSION_MIN = 45;
   P.sessionsFor = function (p) {
     if (p._sessions) return p._sessions;
+    if (p.track) return (p._sessions = unitSessions(p));
     var list = [];
     if (p.id === "foundations") list.push({ id: "start", kind: "start", label: "Start here: how AI works, in nine small steps", min: 25, route: "start" });
     list.push(
@@ -158,6 +201,20 @@
     p._sessions = list;
     return list;
   };
+  /* A unit: one plain-English session, lessons in groups of up to three, practice, and a quiz. */
+  function unitSessions(u) {
+    var list = [{ id: "read", kind: "read", label: "Plain-English intro and figures: " + u.plainTitle, min: 30, target: "sec-intro" }];
+    var ls = u.lessons || [];
+    var size = ls.length === 4 ? 2 : 3;
+    for (var i = 0; i < ls.length; i += size) {
+      var group = ls.slice(i, i + size);
+      var a = i + 1, b = i + group.length;
+      list.push({ id: "les" + a, kind: "lesson", label: (a === b ? "Lesson " + a : "Lessons " + a + "–" + b) + ": " + group.map(function (l) { return l.title; }).join(" · "), min: Math.min(45, 15 + 10 * group.length), target: "les-" + a });
+    }
+    if (u.practice) list.push({ id: "practice", kind: "practice", label: "Practice: " + u.practice.title, min: u.practice.min || 45, target: "sec-practice" });
+    list.push({ id: "quiz", kind: "quiz", label: "Self-check" + (u.interview ? " and interview questions" : ""), min: 20, target: "sec-quiz" });
+    return list;
+  }
   P.minutesFor = function (p) {
     return P.sessionsFor(p).reduce(function (a, s) { return a + s.min; }, 0);
   };
@@ -172,26 +229,42 @@
       document.dispatchEvent(new CustomEvent("progress-change"));
     },
     pct: function (paperId) {
-      var paper = P.paper(paperId);
+      var paper = P.item(paperId);
       if (!paper) return 0;
       var state = P.progress.get(paperId);
       var list = P.sessionsFor(paper);
       return list.filter(function (s) { return state[s.id]; }).length / list.length;
     }
   };
-  /* The first unfinished session on the route, in station order. */
-  P.nextSession = function () {
-    var papers = P.sortedPapers();
+  /* The first unfinished session. With a route id, only that route; otherwise the daily route first
+     (chosen on the overview, Route 1 by default), then the others in order. */
+  P.focusTrack = function () {
+    var f = P.store.get("focus-track", "models");
+    return P.track(f) ? f : "models";
+  };
+  P.nextSession = function (trackId) {
+    var order = trackId ? [trackId] : [P.focusTrack()].concat(P.tracks.map(function (t) { return t.id; }).filter(function (id) { return id !== P.focusTrack(); }));
     var done = 0, total = 0, found = null;
-    papers.forEach(function (p) {
-      var state = P.progress.get(p.id);
-      P.sessionsFor(p).forEach(function (s, i, arr) {
-        total++;
-        if (state[s.id]) done++;
-        else if (!found) found = { paper: p, session: s, index: i, count: arr.length };
+    order.forEach(function (tid) {
+      P.itemsFor(tid).forEach(function (p) {
+        var state = P.progress.get(p.id);
+        P.sessionsFor(p).forEach(function (s, i, arr) {
+          var counts = trackId || tid === order[0];
+          if (counts) total++;
+          if (state[s.id]) { if (counts) done++; }
+          else if (!found) found = { paper: p, session: s, index: i, count: arr.length };
+        });
       });
     });
-    return { next: found, done: done, total: total };
+    return { next: found, done: done, total: total, track: order[0] };
+  };
+  P.trackStats = function (trackId) {
+    var items = P.itemsFor(trackId), sessions = 0, done = 0, min = 0;
+    items.forEach(function (p) {
+      var st = P.progress.get(p.id);
+      P.sessionsFor(p).forEach(function (s) { sessions++; min += s.min; if (st[s.id]) done++; });
+    });
+    return { items: items.length, sessions: sessions, done: done, minutes: min, pct: sessions ? done / sessions : 0 };
   };
 
   /* ---------- Formatting ---------- */

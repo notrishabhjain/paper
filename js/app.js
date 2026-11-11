@@ -49,7 +49,7 @@
 
   /* ---------- Routing ---------- */
   var main, rail, currentName = "home", labCtl = null;
-  var TITLES = { start: "Start here", method: "Study method", toolkit: "Toolkit", glossary: "Glossary", profile: "About you", portfolio: "Portfolio", interviews: "Interviews" };
+  var TITLES = { start: "Start here", method: "Study method", toolkit: "Toolkit", glossary: "Glossary", profile: "About you", portfolio: "Portfolio", interviews: "Interviews", library: "Library" };
   function route() {
     var hash = (location.hash || "").replace(/^#/, "");
     var name = hash || "home";
@@ -60,7 +60,12 @@
     labCtl = null;
     var page;
     var paper = P.paper(name);
+    var unit = paper ? null : P.unit(name);
+    var track = name.indexOf("track-") === 0 ? P.track(name.slice(6)) : null;
     if (paper) page = renderPaper(paper);
+    else if (unit) page = renderUnit(unit);
+    else if (track) page = renderTrack(track);
+    else if (name === "library") page = renderLibrary();
     else if (name === "method") page = renderMethod();
     else if (name === "toolkit") page = renderToolkit();
     else if (name === "glossary") page = renderGlossary();
@@ -74,11 +79,11 @@
     main.appendChild(page);
     main.appendChild(footer());
     currentName = name;
-    updateNav(name);
+    renderRail();
     if (name.indexOf("term-") !== 0) window.scrollTo(0, 0);
-    document.title = (paper ? paper.short + " · " : TITLES[name] ? TITLES[name] + " · " : "") + "Paper Trail";
+    document.title = (paper || unit ? (paper || unit).short + " · " : track ? track.name + " · " : TITLES[name] ? TITLES[name] + " · " : "") + "Paper Trail";
     P.store.set("lastRoute", name);
-    if (paper && P.pendingJump) {
+    if ((paper || unit) && P.pendingJump) {
       var j = P.pendingJump;
       P.pendingJump = null;
       setTimeout(function () { jumpTo(j.target, j.step); }, 60);
@@ -91,7 +96,7 @@
     portfolio: { "Two tracks, one set of skills": "p_tracks", "How Delivery Copilot fits together": "p_flow", "Milestones by station": "p_milestones", "The free stack": "p_stack", "Standing instructions for Claude Code": "p_brief", "Your public portfolio": "p_public", "Templates": "p_templates" },
     interviews: { "Mock interview": "i_mock", "How to answer well": "i_how", "Question bank": "i_bank" }
   };
-  var HEAD_GUIDES = { interviews: "i_intro", glossary: "g_intro", profile: "a_intro" };
+  var HEAD_GUIDES = { interviews: "i_intro", glossary: "g_intro", profile: "a_intro", library: "l_intro" };
   function decorate(name, page) {
     var map = PAGE_GUIDES[name];
     if (map) page.querySelectorAll("section.section > h2").forEach(function (h2) {
@@ -113,36 +118,62 @@
 
   function updateNav(name) {
     var current = name.indexOf("term-") === 0 ? "glossary" : name;
-    document.querySelectorAll("[data-route]").forEach(function (a) {
+    var it = P.item(current);
+    var navCurrent = (it || name.indexOf("track-") === 0) ? "home" : current;
+    document.querySelectorAll(".topnav [data-route]").forEach(function (a) {
+      if (a.getAttribute("data-route") === navCurrent) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    document.querySelectorAll(".rail [data-route]").forEach(function (a) {
       if (a.getAttribute("data-route") === current) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
   }
 
-  /* ---------- Rail ---------- */
-  function renderRail() {
-    P.clear(rail);
-    rail.appendChild(h("div", { class: "line-label", text: "The route" }));
+  /* ---------- Rail: one collapsible group per route ---------- */
+  function railLine(items) {
     var ol = h("ol", { class: "line" });
-    P.sortedPapers().forEach(function (p) {
+    items.forEach(function (p) {
+      var t = P.track(P.trackOf(p));
       var a = h("a", {
         class: "station",
         href: "#" + p.id,
         "data-route": p.id,
-        style: { "--stage": P.stages[p.stage].color, "--p": P.progress.pct(p.id).toFixed(2) }
+        style: { "--stage": p.track ? t.color : P.stages[p.stage].color, "--p": P.progress.pct(p.id).toFixed(2) }
       },
         h("span", { class: "dot", "aria-hidden": "true" }),
         h("span", { class: "station-text" },
-          h("span", { class: "station-num", text: pad(p.num) + " · " + p.year }),
+          h("span", { class: "station-num", text: p.track ? P.itemTag(p) : pad(p.num) + " · " + p.year }),
           h("span", { class: "station-name", text: p.short })
         )
       );
       ol.appendChild(h("li", null, a));
     });
-    rail.appendChild(ol);
+    return ol;
+  }
+  function renderRail() {
+    P.clear(rail);
+    var cur = P.item(currentName);
+    var curTrack = cur ? P.trackOf(cur) : currentName.indexOf("track-") === 0 ? currentName.slice(6) : null;
+    var openSaved = P.store.get("rail-open", { models: true });
+    P.tracks.forEach(function (t) {
+      var items = P.itemsFor(t.id);
+      if (!items.length) return;
+      var stats = P.trackStats(t.id);
+      var d = h("details", { class: "rail-group", style: { "--stage": t.color }, open: curTrack === t.id || (!curTrack && openSaved[t.id]) ? true : null },
+        h("summary", null,
+          h("span", { class: "rg-k", text: "Route " + t.num }),
+          h("span", { class: "rg-name", text: t.name }),
+          h("span", { class: "rg-pct", text: Math.round(stats.pct * 100) + "%" })),
+        h("a", { class: "rg-overview", href: "#track-" + t.id, "data-route": "track-" + t.id, text: "Route overview" }),
+        railLine(items));
+      d.addEventListener("toggle", function () { openSaved[t.id] = d.open; P.store.set("rail-open", openSaved); });
+      rail.appendChild(d);
+    });
     rail.appendChild(h("nav", { class: "rail-extra", "aria-label": "More" },
       h("a", { href: "#start", "data-route": "start", text: "Start here (25-minute story)" }),
       h("a", { href: "#home", "data-route": "home", text: "Overview and today's session" }),
+      h("a", { href: "#library", "data-route": "library", text: "Library: every paper and reading" }),
       h("a", { href: "#method", "data-route": "method", text: "Study method" }),
       h("a", { href: "#toolkit", "data-route": "toolkit", text: "AI project toolkit" }),
       h("a", { href: "#portfolio", "data-route": "portfolio", text: "Portfolio and capstone" }),
@@ -164,13 +195,12 @@
   }
   function footer() {
     return h("footer", { class: "footer" },
-      h("span", { text: "Paper Trail · a study route through nine AI papers" }),
-      h("span", { text: "Interactive figures are teaching models. Where numbers come from a paper, the paper is named." })
+      h("span", { text: "Paper Trail · four routes through AI models, agents, and second brains" }),
+      h("span", { html: "Interactive figures are teaching models. Where numbers come from a paper, the paper is named. Routes 2 to 4 are adapted from <a href=\"https://secondbrainos.dev/\" target=\"_blank\" rel=\"noopener\">Second Brain OS</a> (MIT license)." })
     );
   }
   function overallPct() {
-    var ns = P.nextSession();
-    return ns.total ? ns.done / ns.total : 0;
+    return P.trackStats(P.focusTrack()).pct;
   }
   function tableEl(head, rows, rich) {
     return h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" },
@@ -185,19 +215,20 @@
   function nextSessionCard() {
     var ns = P.nextSession();
     var hours = P.store.get("hours-per-week", 5);
+    var focus = P.track(ns.track);
     if (!ns.next) {
       return h("section", { class: "today-card" },
-        h("div", { class: "today-k" }, h("span", { text: "Route complete" })),
-        h("h2", { text: "You have finished every session on the route." }),
+        h("div", { class: "today-k" }, h("span", { text: "Every route complete" })),
+        h("h2", { text: "You have finished every session on every route." }),
         h("p", { class: "small muted", text: "Polish your portfolio, finish the capstone documents for your work project, and keep practicing interview questions." }),
         h("div", { class: "row" }, h("a", { class: "btn primary", href: "#portfolio", text: "Open the portfolio plan" }), h("a", { class: "btn", href: "#interviews", text: "Practice interviews" })));
     }
     var p = ns.next.paper, s = ns.next.session;
-    var remaining = 0;
-    P.sortedPapers().forEach(function (q) {
+    var stats = P.trackStats(ns.track);
+    var remaining = stats.minutes - P.itemsFor(ns.track).reduce(function (a, q) {
       var st = P.progress.get(q.id);
-      P.sessionsFor(q).forEach(function (x) { if (!st[x.id]) remaining += x.min; });
-    });
+      return a + P.sessionsFor(q).filter(function (x) { return st[x.id]; }).reduce(function (b, x) { return b + x.min; }, 0);
+    }, 0);
     var weeksLeft = Math.max(1, Math.ceil(remaining / (hours * 60)));
     var dest = s.route || p.id;
     var go = h("a", { class: "btn primary", href: "#" + dest, text: "Start this session" });
@@ -207,67 +238,116 @@
     });
     var done = h("button", { type: "button", class: "btn", text: "Mark as done" });
     done.addEventListener("click", function () { P.progress.set(p.id, s.id, true); route(); P.toast("Session marked as done"); });
+    var onOther = P.trackOf(p) !== ns.track;
     return h("section", { class: "today-card", "aria-label": "Today's session" },
-      h("div", { class: "today-k" }, h("span", { text: "Today's session" }), h("span", { class: "mono", text: "≈ " + s.min + " min" })),
+      h("div", { class: "today-k" }, h("span", { text: "Today's session · Route " + focus.num + ": " + focus.short }), h("span", { class: "mono", text: "≈ " + s.min + " min" })),
       h("h2", { text: s.label }),
-      h("p", { class: "small muted", text: "Station " + pad(p.num) + " · " + p.short + " · session " + (ns.next.index + 1) + " of " + ns.next.count }),
+      h("p", { class: "small muted", text: (onOther ? "Your daily route is complete, so this is from Route " + P.track(P.trackOf(p)).num + ". " : "") + P.itemTag(p) + " · " + p.short + " · session " + (ns.next.index + 1) + " of " + ns.next.count }),
       h("div", { class: "row" }, go, done),
-      h("div", { class: "meter" }, h("i", { style: { width: (ns.done / ns.total) * 100 + "%" } })),
-      h("p", { class: "small muted", text: ns.done + " of " + ns.total + " sessions done · about " + weeksLeft + " week" + (weeksLeft === 1 ? "" : "s") + " left at " + hours + " hours a week" })
+      h("div", { class: "meter" }, h("i", { style: { width: (ns.done / Math.max(1, ns.total)) * 100 + "%" } })),
+      h("p", { class: "small muted", text: ns.done + " of " + ns.total + " sessions done on this route · about " + weeksLeft + " week" + (weeksLeft === 1 ? "" : "s") + " left at " + hours + " hours a week. Change your daily route below." })
     );
+  }
+
+  /* One clickable row per station or unit, used on the overview and route pages. */
+  function itemRow(p) {
+    var pct = P.progress.pct(p.id);
+    var t = P.track(P.trackOf(p));
+    var color = p.track ? t.color : P.stages[p.stage].color;
+    var sub = p.track
+      ? (p.source ? "From Second Brain OS · " + p.source : "")
+      : (p.arxiv || p.url ? "The paper: " + p.title + " (" + p.year + ")" : "A primer before the papers");
+    var chip = p.track
+      ? P.sessionsFor(p).length + " sessions · ≈ " + P.hoursFor(p) + " h" + (p.figures ? " · " + p.figures.length + " figure" + (p.figures.length === 1 ? "" : "s") : "")
+      : P.stages[p.stage].name + " · " + P.sessionsFor(p).length + " sessions" + (p.build ? " · builds " + p.build.feature.toLowerCase() : "");
+    return h("li", null,
+      h("a", { class: "route-stop" + (pct === 1 ? " done" : ""), href: "#" + p.id, style: { "--stage": color } },
+        h("span", { class: "rdot", text: p.track ? (t.id === "deep" ? "D" + p.num : t.num + "." + p.num) : pad(p.num) }),
+        h("span", { class: "route-body" },
+          h("span", { class: "route-title" }, h("h3", { text: p.plainTitle || p.title })),
+          h("p", { text: p.hook || p.oneLiner }),
+          sub ? h("span", { class: "yr", text: sub }) : null,
+          h("span", { class: "stage-chip", style: { "--stage": color }, text: chip })
+        ),
+        h("span", { class: "route-side" },
+          h("span", { class: "pct", text: Math.round(pct * 100) + "% done" }),
+          h("span", { class: "meter" }, h("i", { style: { width: pct * 100 + "%" } }))
+        )
+      ));
+  }
+  function trackCard(t) {
+    var stats = P.trackStats(t.id);
+    var isFocus = P.focusTrack() === t.id;
+    var focusBtn = h("button", { type: "button", class: "btn small", "aria-pressed": String(isFocus), text: isFocus ? "✓ Your daily route" : "Make this my daily route" });
+    focusBtn.addEventListener("click", function () { P.store.set("focus-track", t.id); route(); P.toast("Today's session now follows Route " + t.num); });
+    var next = P.nextSession(t.id).next;
+    return h("div", { class: "track-card" + (isFocus ? " focus" : ""), style: { "--stage": t.color } },
+      h("span", { class: "tc-k", text: "Route " + t.num }),
+      h("h3", null, h("a", { href: "#track-" + t.id, text: t.name })),
+      h("p", { text: t.desc }),
+      h("p", { class: "small muted", text: t.who }),
+      h("div", { class: "tc-stats" },
+        h("span", null, h("b", { text: String(stats.items) }), t.id === "models" ? " stations" : t.id === "deep" ? " handbooks" : " units"),
+        h("span", null, h("b", { text: String(stats.sessions) }), " sessions"),
+        h("span", null, h("b", { text: "≈ " + Math.round(stats.minutes / 60) }), " hours")),
+      h("div", { class: "meter" }, h("i", { style: { width: stats.pct * 100 + "%" } })),
+      h("div", { class: "row" },
+        h("a", { class: "btn small primary", href: next ? "#" + next.paper.id : "#track-" + t.id, text: stats.done ? (next ? "Continue" : "Review") : "Open" }),
+        focusBtn));
   }
 
   /* ---------- Home ---------- */
   function renderHome() {
     var page = h("div", { class: "page" });
     var papers = P.sortedPapers();
-    var ns = P.nextSession();
-    var interviewCount = (P.interviewGeneral || []).length + papers.reduce(function (a, p) { return a + (p.interview || []).length; }, 0);
+    var allItems = P.tracks.reduce(function (a, t) { return a.concat(P.itemsFor(t.id)); }, []);
+    var totalSessions = P.tracks.reduce(function (a, t) { return a + P.trackStats(t.id).sessions; }, 0);
+    var interviewCount = P.allInterviewQuestions ? P.allInterviewQuestions().length : 0;
     page.appendChild(h("header", { class: "hero" },
       h("div", { class: "eyebrow" }, h("span", { text: "For project and program managers new to AI" })),
       h("h1", { html: "Understand AI from the ground up, <em>one small step at a time.</em>" }),
-      P.richEl("p", { class: "dek" }, "No AI background needed. Every station starts in plain English, with an everyday comparison and an example from project work. Only then does it bring in the real terms, and only after that do you try things hands-on. You study in short daily sessions, with free tools."),
+      P.richEl("p", { class: "dek" }, "Four routes: how AI models work, how AI agents work, how to build a second brain that an AI keeps for you, and optional deep dives. No AI background needed. Every page starts in plain English, with an everyday comparison and an example from project work. Only then come the real terms, and only after that, hands-on practice with free tools."),
       h("div", { class: "row" },
         h("a", { class: "btn primary", href: "#start", text: "Start here: a 25-minute story" }),
         h("a", { class: "btn", href: "#foundations", text: "Go to the first station" })),
       h("div", { class: "hero-stats" },
-        h("span", null, h("b", { text: String(papers.length) }), "stations"),
-        h("span", null, h("b", { text: String(ns.total) }), "sessions of ~45 min"),
+        h("span", null, h("b", { text: String(P.tracks.length) }), "routes"),
+        h("span", null, h("b", { text: String(allItems.length) }), "stations and units"),
+        h("span", null, h("b", { text: String(totalSessions) }), "short sessions"),
         h("span", null, h("b", { text: String(interviewCount) }), "interview questions"),
-        h("span", null, h("b", { text: Math.round(overallPct() * 100) + "%" }), "of your route done")
+        h("span", null, h("b", { text: Math.round(overallPct() * 100) + "%" }), "of your daily route done")
       )
     ));
     page.appendChild(nextSessionCard());
 
-    var routeList = h("ol", { class: "route" });
-    papers.forEach(function (p) {
-      var pct = P.progress.pct(p.id);
-      routeList.appendChild(h("li", null,
-        h("a", { class: "route-stop" + (pct === 1 ? " done" : ""), href: "#" + p.id, style: { "--stage": P.stages[p.stage].color } },
-          h("span", { class: "rdot", text: pad(p.num) }),
-          h("span", { class: "route-body" },
-            h("span", { class: "route-title" },
-              h("h3", { text: p.plainTitle || p.title })
-            ),
-            h("p", { text: p.hook || p.oneLiner }),
-            h("span", { class: "yr", text: p.arxiv || p.url ? "The paper: " + p.title + " (" + p.year + ")" : "A primer before the papers" }),
-            h("span", { class: "stage-chip", style: { "--stage": P.stages[p.stage].color }, text: P.stages[p.stage].name + " · " + P.sessionsFor(p).length + " sessions" + (p.build ? " · builds " + p.build.feature.toLowerCase() : "") })
-          ),
-          h("span", { class: "route-side" },
-            h("span", { class: "pct", text: Math.round(pct * 100) + "% done" }),
-            h("span", { class: "meter" }, h("i", { style: { width: pct * 100 + "%" } }))
-          )
-        )
-      ));
-    });
-    page.appendChild(section("The route", null, routeList,
-      "Ten stations, in order. Each one builds on the one before, so nothing appears before you are ready for it."));
+    page.appendChild(section("Four routes", null, [
+      h("div", { class: "track-grid" }, P.tracks.map(trackCard)),
+      figure({ w: "flow", k: "Suggested order", title: "One gentle path through all four routes",
+        plain: "Each step only uses ideas from the steps before it. Click a step to see why it sits where it does.",
+        opts: { steps: [
+          { t: "Start here", s: "25-minute story", d: "Nine small steps that explain, with no jargon, what a language model is and how it learns. It gives you a rough map of everything that follows.", like: "Looking at the whole map before a road trip." },
+          { t: "Station 00", s: "Route 1 primer", d: "The basic ideas every other page uses: tokens, training, the context window, and how to read a chart. Routes 2 and 3 assume only this.", like: "Learning what the dashboard lights mean before you drive." },
+          { t: "Route 2 or the rest of Route 1", s: "your choice", d: "Pick Route 2 if your next job is leading an AI project: it explains agents, which is what most teams build now. Pick the rest of Route 1 if you want to understand the models underneath first. Most people alternate.", like: "Learning to drive the car, or how the engine works. You will want both, in either order." },
+          { t: "Route 3", s: "second brain", d: "Build a personal knowledge base that an AI agent maintains. It uses the agent ideas from Route 2 on your own notes, so it doubles as practice.", like: "After learning about assistants, hiring one for your own desk." },
+          { t: "Deep dives", s: "optional", d: "Five handbooks that go further on one topic each. Take one when a unit in Route 2 makes you curious.", like: "The extended edition of a chapter you liked." }
+        ] } }, "home")
+    ], "Each route is a series of short pages. Pick one as your daily route and the session card above will follow it."));
 
-    page.appendChild(section("How every station works", null, h("div", { class: "loop-grid three" },
-      loopCard("PART 1", "Get the idea", "Plain English first: what the paper did, an everyday comparison, an example from project work, and a few figures to play with. No jargon."),
-      loopCard("PART 2", "Go deeper", "Now the real terms. Every new word is highlighted; click it for a one-line meaning. Then a guided look at the paper itself."),
-      loopCard("PART 3", "Do it", "A hands-on lab on a free GPU, one feature for your portfolio app, project-plan rows, interview questions, and a short public write-up.")
-    ), "Highlighted words like [[attention]] or [[parameter]] open a plain definition when you click them. Progress and notes are saved in this browser only."));
+    var lists = h("div", { class: "route-lists" });
+    P.tracks.forEach(function (t) {
+      var items = P.itemsFor(t.id);
+      if (!items.length) return;
+      lists.appendChild(h("details", { class: "route-list", style: { "--stage": t.color }, open: P.focusTrack() === t.id ? true : null },
+        h("summary", null, h("span", { class: "rl-k", text: "Route " + t.num }), h("span", { class: "rl-name", text: t.name }), h("span", { class: "rl-n", text: items.length + (t.id === "models" ? " stations" : t.id === "deep" ? " handbooks" : " units") })),
+        h("ol", { class: "route" }, items.map(itemRow))));
+    });
+    page.appendChild(section("What is on each route", null, lists, "Your daily route is open. Open the others to see what they cover."));
+
+    page.appendChild(section("How every page works", null, h("div", { class: "loop-grid three" },
+      loopCard("PART 1", "Get the idea", "Plain English first: what it is, an everyday comparison, an example from project work, and a few figures to play with. No jargon."),
+      loopCard("PART 2", "Go deeper", "Now the real terms. Every new word is highlighted; click it for a one-line meaning. Stations walk through a paper; units walk through short lessons."),
+      loopCard("PART 3", "Do it", "Hands-on practice with free tools and ready prompts for Claude Code, a short self-check, interview questions, and something for your portfolio.")
+    ), "Highlighted words like [[attention]] or [[agent]] open a plain definition when you click them. Progress and notes are saved in this browser only."));
 
     page.appendChild(section("Where each paper fits", null, figure({
       w: "lifecycle",
@@ -277,7 +357,7 @@
     }, "home")));
 
     page.appendChild(section("After the nine", null, nextPapersTable(),
-      "Once you finish the route, these papers fill the biggest remaining gaps for someone leading AI projects."));
+      "Once you finish Route 1, these papers fill the biggest remaining gaps for someone leading AI projects. The <a href=\"#library\">Library</a> lists every paper used on Routes 2 to 4."));
     return page;
   }
   function loopCard(n, title, text) {
@@ -468,6 +548,217 @@
     page.appendChild(pager);
     return page;
   }
+  /* ---------- Route pages (Routes 1 to 4) ---------- */
+  function focusButton(t) {
+    var isFocus = P.focusTrack() === t.id;
+    var b = h("button", { type: "button", class: "btn", "aria-pressed": String(isFocus), text: isFocus ? "✓ This is your daily route" : "Make this my daily route" });
+    b.addEventListener("click", function () { P.store.set("focus-track", t.id); route(); P.toast("Today's session now follows Route " + t.num); });
+    return b;
+  }
+  function renderTrack(t) {
+    var page = h("div", { class: "page" });
+    var stats = P.trackStats(t.id);
+    var next = P.nextSession(t.id).next;
+    page.appendChild(h("header", { class: "page-head" },
+      h("div", { class: "eyebrow" }, h("span", { text: "Route " + t.num + " of " + P.tracks.length }), h("span", { class: "stage-chip", style: { "--stage": t.color }, text: t.short })),
+      h("h1", { text: t.name }),
+      P.richEl("p", { class: "dek" }, t.desc),
+      h("div", { class: "meta-row" },
+        h("span", null, h("strong", { text: stats.items + (t.id === "models" ? " stations" : t.id === "deep" ? " handbooks" : " units") }), " · " + stats.sessions + " sessions · ≈ " + Math.round(stats.minutes / 60) + " hours"),
+        h("span", null, h("strong", { text: Math.round(stats.pct * 100) + "%" }), " done"))
+    ));
+    page.appendChild(h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Before you start" }), P.richEl("p", null, t.who)));
+    page.appendChild(h("div", { class: "row", style: { marginTop: "1rem" } },
+      next ? h("a", { class: "btn primary", href: "#" + next.paper.id, text: stats.done ? "Continue: " + next.paper.short : "Begin with " + P.itemTag(next.paper) }) : null,
+      focusButton(t)));
+    var map = (P.trackMaps || {})[t.id];
+    if (map) page.appendChild(section("The map of this route", null, figure(map, "track-" + t.id), map.intro));
+    page.appendChild(section(t.id === "models" ? "The stations" : t.id === "deep" ? "The handbooks" : "The units", null, h("ol", { class: "route" }, P.itemsFor(t.id).map(itemRow)),
+      t.id === "models" ? "Ten stations, in order. Each one builds on the one before." : t.id === "deep" ? "Independent of each other: take them in any order." : "In order. Each unit uses only ideas from the units before it."));
+    if (t.id === "models") page.appendChild(section("Where each paper fits", null, figure({ w: "lifecycle", k: "Map", title: "The life of a large language model", text: "Click a stage to see what happens there, which papers explain it, and the decisions a project manager owns." }, "track-models")));
+    if (t.credit) page.appendChild(P.richEl("p", { class: "small muted", style: { marginTop: "2rem" } }, t.credit));
+    return page;
+  }
+
+  /* ---------- Unit page (Routes 2 to 4) ---------- */
+  var UNIT_PREAMBLE =
+    "You are my assistant in Claude Code. I am an IT project manager learning AI. I know Node.js, Postgres, and MongoDB; I can read code but I do not write it. So:\n" +
+    "- Work only inside <folder>/ (create it if it does not exist).\n" +
+    "- Free tools only: local models through Ollama, open-source libraries, and the free Obsidian app. No paid APIs or keys.\n" +
+    "- Before changing anything, give me a short plan (5–8 bullets) and wait for my OK.\n" +
+    "- Explain every file you create in one or two plain-English sentences.\n" +
+    "- Keep it small enough to run on a laptop in a few minutes.\n" +
+    "- When something fails, explain the error in one paragraph a non-engineer can follow, then fix it.\n" +
+    "- Finish by adding what we built, what failed, and three lessons learned to <folder>/README.md.\n\n" +
+    "TASK\n";
+  function unitFolder(u) {
+    if (u.folder) return u.folder;
+    if (u.track === "brain") return "course-vault";
+    if (u.track === "deep") return "deep-dives/" + u.id;
+    return "agents/" + pad(u.num) + "-" + u.id;
+  }
+  function lessonEl(l, i, u) {
+    return h("article", { class: "lesson", id: "les-" + (i + 1) },
+      h("div", { class: "lesson-head" }, h("span", { class: "lesson-n", text: "Lesson " + (i + 1) }), h("h3", { text: l.title })),
+      l.plain ? P.richEl("p", { class: "lesson-plain" }, l.plain) : null,
+      l.like ? h("div", { class: "concept-like" }, h("span", { class: "k", text: "Everyday comparison" }), P.richEl("p", null, l.like)) : null,
+      l.points ? h("ul", { class: "lesson-points" }, l.points.map(function (x) { return P.richEl("li", null, x); })) : null,
+      l.table ? tableEl(l.table[0], l.table.slice(1), true) : null,
+      l.code ? codeAnnot(l.code) : null,
+      l.fig ? figure(l.fig, u.id) : null,
+      l.example ? h("div", { class: "aside-card" }, h("span", { class: "mini-h", text: "Example" }), P.richEl("p", null, l.example)) : null,
+      l.pm ? h("div", { class: "callout" }, h("span", { class: "callout-k", text: "For your project" }), P.richEl("p", null, l.pm)) : null
+    );
+  }
+  function renderUnit(u) {
+    var page = h("article", { class: "page" });
+    var t = P.track(u.track);
+    var sessions = P.sessionsFor(u);
+    function minutesOf(kinds) { return sessions.filter(function (s) { return kinds.indexOf(s.kind) >= 0; }).reduce(function (a, s) { return a + s.min; }, 0); }
+    function timeLabel(min) { return min >= 90 ? "about " + Math.round(min / 60 * 2) / 2 + " hours" : "about " + min + " minutes"; }
+    var n = 0;
+    function idx() { n++; return pad(n); }
+    function part(num, title, desc, min) {
+      return h("div", { class: "part", style: { "--stage": t.color } },
+        h("span", { class: "part-k", text: "Part " + num + " of 3 · " + timeLabel(min) }),
+        h("p", { class: "part-t", text: title }),
+        P.richEl("p", { class: "part-d" }, desc));
+    }
+    page.appendChild(h("header", { class: "page-head" },
+      h("div", { class: "eyebrow" },
+        h("a", { href: "#track-" + t.id, text: "Route " + t.num + " · " + t.short }),
+        h("span", { text: P.itemTag(u) }),
+        u.kicker ? h("span", { class: "stage-chip", style: { "--stage": t.color }, text: u.kicker }) : null),
+      h("h1", { text: u.plainTitle }),
+      P.richEl("p", { class: "dek" }, u.hook),
+      h("div", { class: "meta-row" },
+        h("span", null, h("strong", { text: sessions.length + " sessions" }), " · ≈ " + P.hoursFor(u) + " hours"),
+        u.sourceUrl ? h("span", null, "Adapted from ", h("a", { href: u.sourceUrl, target: "_blank", rel: "noopener", text: "Second Brain OS: " + u.source + " ↗" })) : null)
+    ));
+    var jumps = [["Plain English", "sec-intro"], ["Figures", "sec-see"], ["Lessons", "sec-lessons"], ["Practice", "sec-practice"], ["Self-check", "sec-quiz"], ["Sources", "sec-sources"], ["Sessions", "sec-progress"]];
+    page.appendChild(h("nav", { class: "jump", "aria-label": "On this page" }, jumps.filter(function (j) {
+      return !(j[1] === "sec-see" && !(u.figures || []).length) && !(j[1] === "sec-practice" && !u.practice);
+    }).map(function (j) {
+      var b = h("button", { type: "button", class: "chip", text: j[0] });
+      b.addEventListener("click", function () { jumpTo(j[1]); });
+      return b;
+    })));
+    var state = P.progress.get(u.id);
+    var nextHere = sessions.filter(function (s) { return !state[s.id]; })[0];
+    if (nextHere) {
+      var goBtn = h("button", { type: "button", class: "btn small primary", text: "Go to it" });
+      goBtn.addEventListener("click", function () { jumpTo(nextHere.target); });
+      page.appendChild(h("div", { class: "today-inline" },
+        h("span", { class: "today-k" }, h("span", { text: "Next session here" })),
+        h("span", { class: "small", text: nextHere.label + " · ≈ " + nextHere.min + " min" }),
+        goBtn));
+    }
+
+    /* Part 1 */
+    page.appendChild(part(1, "Get the idea", "Plain English, an everyday comparison, and a picture or two. No jargon yet.", minutesOf(["read"])));
+    var intro = [];
+    if (u.bridge) intro.push(h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Where you are" }), P.richEl("p", null, u.bridge)));
+    if (u.explain) intro.push(h("div", { class: "prose explain" }, u.explain.map(function (x) { return P.richEl("p", null, x); })));
+    var pair = [];
+    if (u.everyday) pair.push(h("div", { class: "aside-card" }, h("span", { class: "mini-h", text: "Everyday comparison" }), h("h3", { text: u.everyday.title }), P.richEl("p", null, u.everyday.text)));
+    if (u.example) pair.push(h("div", { class: "aside-card" }, h("span", { class: "mini-h", text: "Example from project work" }), h("h3", { text: u.example.title }), P.richEl("p", null, u.example.text)));
+    if (pair.length) intro.push(h("div", { class: "two-col" }, pair));
+    if (u.words) intro.push(h("div", { style: { display: "grid", gap: "0.6rem" } },
+      h("h3", { text: "Words worth learning now" }), wordCards(u.words),
+      h("p", { class: "small muted", text: "Only these few for now. Click any word for its full glossary entry." })));
+    if (u.remember) intro.push(h("div", { class: "remember" }, h("span", { class: "mini-h", text: "If you remember only three things" }), h("ol", null, u.remember.map(function (r) { return P.richEl("li", null, r); }))));
+    page.appendChild(section("In plain English", idx(), intro, null, "sec-intro"));
+    if ((u.figures || []).length) {
+      var nf = 0;
+      page.appendChild(section("See it", idx(), u.figures.map(function (f) {
+        nf++;
+        f.k = f.k || "Figure " + (t.id === "deep" ? "D" : t.num + ".") + u.num + "." + nf;
+        return figure(f, u.id);
+      }), "Click around. Each figure has a plain-words line on top and a takeaway at the bottom.", "sec-see"));
+    }
+
+    /* Part 2 */
+    var lessons = u.lessons || [];
+    page.appendChild(part(2, "Learn it step by step", "Short lessons, one idea each. New words are <span class=\"term-sample\">highlighted</span>: click one for a one-line meaning. Stop at any session break and pick up tomorrow.", minutesOf(["lesson"])));
+    var lessonKids = [];
+    var groups = sessions.filter(function (s) { return s.kind === "lesson"; });
+    lessons.forEach(function (l, i) {
+      var g = groups.filter(function (s) { return s.target === "les-" + (i + 1); })[0];
+      if (g) lessonKids.push(h("div", { class: "session-break" }, h("span", { text: "Session " + (sessions.indexOf(g) + 1) + " of " + sessions.length }), h("span", { text: "≈ " + g.min + " min" })));
+      lessonKids.push(lessonEl(l, i, u));
+    });
+    page.appendChild(section("Lessons", idx(), lessonKids, u.lessonsIntro || null, "sec-lessons"));
+
+    /* Part 3 */
+    page.appendChild(part(3, "Do it", "Practice with free tools, a quick self-check, and questions to rehearse for interviews.", minutesOf(["practice", "quiz"])));
+    if (u.practice) {
+      var pr = u.practice, folder = unitFolder(u);
+      var kids = [P.richEl("p", { class: "lab-plain" }, "<b>What you will do:</b> " + pr.intro)];
+      if (pr.steps) kids.push(h("div", null, h("h4", { text: "Steps" }), h("ol", { class: "steps" }, pr.steps.map(function (d) { return P.richEl("li", null, d); }))));
+      if (pr.prompt) kids.push(promptBox("Prompt for Claude Code", UNIT_PREAMBLE.replace(/<folder>/g, folder) + pr.prompt));
+      (pr.extra || []).forEach(function (x) { kids.push(promptBox(x.title, x.text)); });
+      if (pr.observe) kids.push(h("div", null, h("h4", { text: "What to look for" }), h("ul", null, pr.observe.map(function (d) { return P.richEl("li", null, d); }))));
+      if (pr.done) kids.push(h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Done when" }), P.richEl("p", null, pr.done)));
+      page.appendChild(section("Practice: " + pr.title, idx(), h("div", { class: "figure" }, kids), pr.why || null, "sec-practice"));
+    }
+    page.appendChild(section("Self-check", idx(), renderQuiz(u), "Three or four questions. Wrong answers explain themselves, so guess freely.", "sec-quiz"));
+    if (u.interview) page.appendChild(section("Interview practice", idx(), [guideBox(SG("interview"), "<a href=\"#interviews\">Practice every question with a timer</a>."), renderInterviewList(u.interview.map(function (q, i) { return { key: u.id + i, q: q.q, a: q.a }; }))], null, "sec-interview"));
+    var src = (u.sources || []).map(function (x) {
+      return h("li", null, x.url ? h("a", { href: x.url, target: "_blank", rel: "noopener", text: x.t + " ↗" }) : h("b", { text: x.t }), x.note ? P.richEl("span", { class: "muted" }, " · " + x.note) : null);
+    });
+    page.appendChild(section("Sources and further reading", idx(), [
+      src.length ? h("ul", { class: "src-list" }, src) : null,
+      P.richEl("p", { class: "small muted" }, (u.sourceUrl ? "This unit adapts <a href=\"" + u.sourceUrl + "\" target=\"_blank\" rel=\"noopener\">" + u.source + "</a> from Second Brain OS (MIT license), rewritten for readers new to AI. " : "") + "Numbers in figures come from the sources named under each figure. Some sources are recent (2026) and not yet peer reviewed; they are marked where it matters. The <a href=\"#library\">Library</a> explains every paper in plain English.")
+    ], null, "sec-sources"));
+    page.appendChild(section("Your sessions and notes", idx(), [guideBox(SG("progress"), "Tick a session when you finish it. The overview's “Today's session” card points to the next one on your daily route."), renderChecklist(u), renderNotes(u)], null, "sec-progress"));
+
+    if (u.next) page.appendChild(h("div", { class: "callout", style: { marginTop: "2.5rem" } }, h("span", { class: "callout-k", text: "Coming up next" }), P.richEl("p", null, u.next)));
+    var list = P.unitsFor(u.track);
+    var i = list.indexOf(u);
+    var pager = h("nav", { class: "pager", "aria-label": "Units" });
+    if (i > 0) pager.appendChild(h("a", { href: "#" + list[i - 1].id }, h("span", { class: "pk", text: "← " + P.itemTag(list[i - 1]) }), h("span", { class: "pn", text: list[i - 1].plainTitle })));
+    else pager.appendChild(h("a", { href: "#track-" + t.id }, h("span", { class: "pk", text: "← Route " + t.num }), h("span", { class: "pn", text: t.name })));
+    if (i < list.length - 1) pager.appendChild(h("a", { class: "next", href: "#" + list[i + 1].id }, h("span", { class: "pk", text: P.itemTag(list[i + 1]) + " →" }), h("span", { class: "pn", text: list[i + 1].plainTitle })));
+    else {
+      var nt = P.tracks[P.tracks.indexOf(t) + 1];
+      if (nt) pager.appendChild(h("a", { class: "next", href: "#track-" + nt.id }, h("span", { class: "pk", text: "Route " + nt.num + " →" }), h("span", { class: "pn", text: nt.name })));
+    }
+    page.appendChild(pager);
+    return page;
+  }
+
+  /* ---------- Library: every paper and reading behind Routes 2 to 4 ---------- */
+  function renderLibrary() {
+    var page = h("div", { class: "page" });
+    var groups = P.library || [];
+    var count = groups.reduce(function (a, g) { return a + g.items.length; }, 0);
+    page.appendChild(h("header", { class: "page-head" },
+      h("div", { class: "eyebrow" }, h("span", { text: count + " papers, articles, and books" })),
+      h("h1", { text: "Library" }),
+      P.richEl("p", { class: "dek" }, "Everything Routes 2 to 4 draw on, each explained in two plain sentences, with the unit where it matters most. You do not need to read any of it to follow the routes. Route 1's nine papers live on their own stations.")
+    ));
+    page.appendChild(h("nav", { class: "jump", "aria-label": "Library sections" }, groups.map(function (g, i) {
+      var b = h("button", { type: "button", class: "chip", text: g.short || g.title });
+      b.addEventListener("click", function () { jumpTo("lib-" + i); });
+      return b;
+    })));
+    groups.forEach(function (g, gi) {
+      page.appendChild(section(g.title, pad(gi + 1), h("div", { class: "lib-list" }, g.items.map(function (it) {
+        var u = it.unit ? P.item(it.unit) : null;
+        return h("div", { class: "lib-item" },
+          h("div", { class: "lib-head" },
+            it.url ? h("a", { class: "lib-t", href: it.url, target: "_blank", rel: "noopener", text: it.t + " ↗" }) : h("span", { class: "lib-t", text: it.t }),
+            h("span", { class: "lib-who", text: [it.who, it.year, it.kind].filter(Boolean).join(" · ") })),
+          P.richEl("p", null, it.plain),
+          it.caution ? P.richEl("p", { class: "lib-caution" }, "<b>Read with care:</b> " + it.caution) : null,
+          u ? h("p", { class: "lib-unit" }, "Read it with ", h("a", { href: "#" + u.id, text: P.itemTag(u) + " · " + (u.plainTitle || u.short) })) : null);
+      })), g.intro, "lib-" + gi));
+    });
+    page.appendChild(h("div", { class: "callout", style: { marginTop: "2rem" } }, h("span", { class: "callout-k", text: "Credit" }),
+      P.richEl("p", null, "Routes 2 to 4 and this library are adapted from <a href=\"https://secondbrainos.dev/\" target=\"_blank\" rel=\"noopener\">Second Brain OS</a>, an open guide to second brains and AI agents published under the MIT license. Paper Trail rewrites its material for readers new to AI and adds figures, quizzes, and practice prompts. Facts dated 2026 come from that guide and from the sources it cites.")));
+    return page;
+  }
+
   function wordCards(words) {
     return h("div", { class: "word-cards" }, words.map(function (w) {
       var t = P.term(w[0]);
@@ -726,7 +1017,7 @@
       var st = P.progress.get(p.id);
       var done = sessions.filter(function (s) { return st[s.id]; }).length;
       meter.style.width = (done / sessions.length) * 100 + "%";
-      label.textContent = done + " of " + sessions.length + " sessions done on this station";
+      label.textContent = done + " of " + sessions.length + " sessions done on this " + (p.track ? "unit" : "station");
     }
     var state = P.progress.get(p.id);
     sessions.forEach(function (s) {
@@ -791,7 +1082,7 @@
       methodCard("DO · 35–40 MIN", "One session, one thing", "Read, play with figures, run one lab step, or build one feature. Stop at the session boundary even if you could keep going.", null),
       methodCard("CLOSE · 5 MIN", "Tick it and write two lines", "Mark the session done, and note one thing you learned or one thing that failed in the station's notes box.", null),
       methodCard("WEEKLY · OPTIONAL", "Catch up or publish", "Use a free weekend slot for a session you skipped, or to polish the station's README and post.", null)
-    ), "The route is about " + Math.round(P.sortedPapers().reduce(function (a, p) { return a + P.minutesFor(p); }, 0) / 60) + " hours, split into " + P.nextSession().total + " sessions of about 45 minutes. One a day is roughly five hours a week."));
+    ), "Route 1 is about " + Math.round(P.trackStats("models").minutes / 60) + " hours, split into " + P.trackStats("models").sessions + " sessions of about 45 minutes. Routes 2 to 4 add " + Math.round((P.trackStats("agents").minutes + P.trackStats("brain").minutes + P.trackStats("deep").minutes) / 60) + " hours in shorter sessions. One session a day is roughly five hours a week."));
 
     page.appendChild(section("The four-step loop", "02", h("div", { class: "loop-grid" },
       methodCard("STEP 1 · COOK IT SMALL", "Reproduce, even partially", "Like trying a restaurant recipe at home in a small pot: rebuild the paper's main experiment at a tiny scale. Your numbers won't match the paper's, and that is fine.", "You learn which parts of the recipe really matter, and how far a demo is from production."),
@@ -1019,13 +1310,13 @@
       count.textContent = shown.length + " of " + sorted.length + " terms";
       if (!shown.length) list.appendChild(h("p", { class: "empty", text: "No terms match \"" + query + "\". Try a shorter word." }));
       shown.forEach(function (t) {
-        var paper = t.paper ? P.paper(t.paper) : null;
+        var paper = t.paper ? P.paper(t.paper) : t.unit ? P.unit(t.unit) : null;
         list.appendChild(h("div", { class: "gloss-item", id: "g-" + t.id },
           h("div", { class: "gloss-term" }, h("b", { text: t.term }), h("span", { class: "cat", text: t.cat + (t.aka ? " · " + t.aka : "") })),
           h("div", { class: "gloss-def" },
             P.richEl("p", null, t.def),
             t.analogy ? h("p", { class: "an", text: t.analogy }) : null,
-            paper ? h("p", { class: "seen" }, "First matters at ", h("a", { href: "#" + paper.id, text: "Station " + pad(paper.num) + " · " + paper.short })) : null
+            paper ? h("p", { class: "seen" }, "First matters at ", h("a", { href: "#" + paper.id, text: P.itemTag(paper) + " · " + paper.short })) : null
           )
         ));
       });
@@ -1114,7 +1405,7 @@
     closePopover();
     var t = P.term(id);
     if (!t) return;
-    var paper = t.paper ? P.paper(t.paper) : null;
+    var paper = t.paper ? P.paper(t.paper) : t.unit ? P.unit(t.unit) : null;
     pop = h("div", { class: "popover", role: "dialog", "aria-label": t.term },
       h("span", { class: "pop-cat", text: t.cat }),
       h("h4", { text: t.term }),
@@ -1122,7 +1413,7 @@
       t.analogy ? h("p", { class: "pop-analogy", text: t.analogy }) : null,
       h("div", { class: "pop-actions" },
         h("a", { href: "#term-" + t.id, text: "Open in glossary" }),
-        paper ? h("a", { href: "#" + paper.id, class: "small", text: "Station " + pad(paper.num) }) : null
+        paper ? h("a", { href: "#" + paper.id, class: "small", text: P.itemTag(paper) }) : null
       )
     );
     document.body.appendChild(pop);
@@ -1169,7 +1460,7 @@
       menu.setAttribute("aria-expanded", String(open));
     });
     document.addEventListener("progress-change", renderRail);
-    window.addEventListener("hashchange", function () { renderRail(); route(); });
+    window.addEventListener("hashchange", route);
     route();
   }
   P.routeRefresh = route;
