@@ -13,6 +13,11 @@
         list.push({ key: p.id + i, group: "station", label: "Station " + (p.num < 10 ? "0" : "") + p.num + " · " + p.short, q: q.q, a: q.a, paper: p.id });
       });
     });
+    (P.units || []).slice().sort(function (a, b) { return P.track(a.track).num - P.track(b.track).num || a.num - b.num; }).forEach(function (u) {
+      (u.interview || []).forEach(function (q, i) {
+        list.push({ key: u.id + i, group: "unit", label: P.itemTag(u) + " · " + u.short, q: q.q, a: q.a, paper: u.id });
+      });
+    });
     return list;
   };
 
@@ -25,7 +30,7 @@
       { key: "again", label: "Marked for practice" },
       { key: "left", label: "Not tried yet" }
     ]);
-    var segEl = P.seg([{ value: "all", label: "All questions" }, { value: "general", label: "General" }, { value: "station", label: "Paper-specific" }, { value: "again", label: "Marked for practice" }], pool,
+    var segEl = P.seg([{ value: "all", label: "All questions" }, { value: "general", label: "General" }, { value: "station", label: "Paper-specific" }, { value: "unit", label: "Agents and second brain" }, { value: "again", label: "Marked for practice" }], pool,
       function (v) { pool = v; pick(); }, "Question pool");
     var label = h("span", { class: "eyebrow" });
     var question = h("p", { class: "decide-q" });
@@ -62,6 +67,7 @@
       return all.filter(function (q) {
         if (pool === "general") return q.group === "general";
         if (pool === "station") return q.group === "station";
+        if (pool === "unit") return q.group === "unit";
         if (pool === "again") return status[q.key] === "again";
         return true;
       });

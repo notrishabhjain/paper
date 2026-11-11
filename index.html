@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Paper Trail</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="An interactive study route through nine AI papers, from Attention Is All You Need to FlashAttention, for project and program managers moving into AI.">
+<meta name="description" content="Four interactive study routes for project and program managers moving into AI: how AI models work (nine landmark papers), how AI agents work, building a second brain, and deep dives.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap">
@@ -26,11 +26,12 @@
     </button>
     <a class="brand" href="#home">
       <span class="brand-name">Paper Trail</span>
-      <span class="brand-tag">nine papers · one route</span>
+      <span class="brand-tag">models · agents · second brains</span>
     </a>
     <nav class="topnav" aria-label="Main">
       <a href="#start" data-route="start">Start here</a>
-      <a href="#home" data-route="home">Route</a>
+      <a href="#home" data-route="home">Routes</a>
+      <a href="#library" data-route="library">Library</a>
       <a href="#method" data-route="method">Method</a>
       <a href="#toolkit" data-route="toolkit">Toolkit</a>
       <a href="#portfolio" data-route="portfolio">Portfolio</a>
@@ -43,19 +44,26 @@
   </div>
 </header>
 <div class="shell">
-  <aside class="rail" id="rail" aria-label="Stations"></aside>
+  <aside class="rail" id="rail" aria-label="Routes"></aside>
   <main id="main" tabindex="-1"></main>
 </div>
 <noscript><p style="padding:1rem">Paper Trail needs JavaScript for its interactive figures.</p></noscript>
 
 <script src="js/core.js"></script>
 <script src="js/content/glossary.js"></script>
+<script src="js/content/glossary-agents.js"></script>
 <script src="js/content/papers-a.js"></script>
 <script src="js/content/papers-b.js"></script>
 <script src="js/content/papers-c.js"></script>
 <script src="js/content/tailoring.js"></script>
 <script src="js/content/plain.js"></script>
+<script src="js/content/plain-deeper.js"></script>
 <script src="js/content/portfolio.js"></script>
+<script src="js/content/units-agents.js"></script>
+<script src="js/content/units-brain.js"></script>
+<script src="js/content/units-deep.js"></script>
+<script src="js/content/library.js"></script>
+<script src="js/content/library-tools.js"></script>
 <script src="js/widgets/foundations.js"></script>
 <script src="js/widgets/transformer.js"></script>
 <script src="js/widgets/bert.js"></script>
@@ -67,6 +75,7 @@
 <script src="js/widgets/flash.js"></script>
 <script src="js/widgets/toolkit.js"></script>
 <script src="js/widgets/career.js"></script>
+<script src="js/widgets/diagrams.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
