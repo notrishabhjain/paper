@@ -92,7 +92,7 @@
   /* Plain-English guides for the shared pages, attached under each section heading. */
   var PAGE_GUIDES = {
     method: { "Your daily rhythm": "m_rhythm", "The four-step loop": "m_loop", "Working with Claude Code": "m_tools", "Your free toolbelt": "m_belt", "Reading a paper in three passes": "m_read", "Plan your schedule": "m_plan", "Templates": "m_templates" },
-    toolkit: { "Choose an approach": "t_decide", "Estimate training cost": "t_train", "Estimate serving memory": "t_serve", "The lifecycle map": "t_life", "Questions to ask your ML team": "t_questions" },
+    toolkit: { "Choose an approach": "t_decide", "Estimate training cost": "t_train", "Estimate serving memory": "t_serve", "The lifecycle map": "t_life", "Questions to ask your ML team": "t_questions", "Agent or workflow?": "t_ladder", "Agent go-live checklist": "t_golive", "Context window and run cost": "t_budget", "Set an automation threshold": "t_threshold", "Questions to ask about an agent": "t_agentq" },
     portfolio: { "Two tracks, one set of skills": "p_tracks", "How Delivery Copilot fits together": "p_flow", "Milestones by station": "p_milestones", "The free stack": "p_stack", "Standing instructions for Claude Code": "p_brief", "Your public portfolio": "p_public", "Templates": "p_templates" },
     interviews: { "Mock interview": "i_mock", "How to answer well": "i_how", "Question bank": "i_bank" }
   };
@@ -331,7 +331,13 @@
           { t: "Route 3", s: "second brain", d: "Build a personal knowledge base that an AI agent maintains. It uses the agent ideas from Route 2 on your own notes, so it doubles as practice.", like: "After learning about assistants, hiring one for your own desk." },
           { t: "Deep dives", s: "optional", d: "Five handbooks that go further on one topic each. Take one when a unit in Route 2 makes you curious.", like: "The extended edition of a chapter you liked." }
         ] } }, "home")
-    ], "Each route is a series of short pages. Pick one as your daily route and the session card above will follow it."));
+    ].concat(P.levels ? [figure({ w: "layers", k: "Another way through", title: "Routes 2 to 4 by level", plain: "Second Brain OS's own order mixes the agents and second-brain units by difficulty, so practice and theory alternate. Click a level for its units.",
+      opts: { items: P.levels.map(function (lv, i) {
+        var units = lv.ids.map(P.unit).filter(Boolean);
+        var sessions = units.reduce(function (a, u) { return a + P.sessionsFor(u).length; }, 0);
+        return { t: lv.t, s: units.length + " units · " + sessions + " sessions", c: [3, 4, 8][i], d: lv.d,
+          points: units.map(function (u) { return "<a href=\"#" + u.id + "\">" + P.itemTag(u) + " · " + u.plainTitle + "</a>"; }) };
+      }) } }, "home")] : []), "Each route is a series of short pages. Pick one as your daily route and the session card above will follow it."));
 
     var lists = h("div", { class: "route-lists" });
     P.tracks.forEach(function (t) {
@@ -695,6 +701,7 @@
       var pr = u.practice, folder = unitFolder(u);
       var kids = [P.richEl("p", { class: "lab-plain" }, "<b>What you will do:</b> " + pr.intro)];
       if (pr.steps) kids.push(h("div", null, h("h4", { text: "Steps" }), h("ol", { class: "steps" }, pr.steps.map(function (d) { return P.richEl("li", null, d); }))));
+      if (pr.shortcut) kids.push(h("div", { class: "callout" }, h("span", { class: "callout-k", text: "Already packaged" }), P.richEl("p", null, pr.shortcut)));
       if (pr.prompt) kids.push(promptBox("Prompt for Claude Code", UNIT_PREAMBLE.replace(/<folder>/g, folder) + pr.prompt));
       (pr.extra || []).forEach(function (x) { kids.push(promptBox(x.title, x.text)); });
       if (pr.observe) kids.push(h("div", null, h("h4", { text: "What to look for" }), h("ul", null, pr.observe.map(function (d) { return P.richEl("li", null, d); }))));
@@ -727,35 +734,50 @@
     return page;
   }
 
-  /* ---------- Library: every paper and reading behind Routes 2 to 4 ---------- */
+  /* ---------- Library: every paper, reading, and tool behind Routes 2 to 4 ---------- */
+  function libraryItem(it) {
+    var u = it.unit ? P.item(it.unit) : null;
+    return h("div", { class: "lib-item" },
+      h("div", { class: "lib-head" },
+        it.url ? h("a", { class: "lib-t", href: it.url, target: "_blank", rel: "noopener", text: it.t + " ↗" }) : h("span", { class: "lib-t", text: it.t }),
+        h("span", { class: "lib-who", text: [it.who, it.year, it.kind].filter(Boolean).join(" · ") })),
+      P.richEl("p", null, it.plain),
+      it.caution ? P.richEl("p", { class: "lib-caution" }, "<b>Read with care:</b> " + it.caution) : null,
+      u ? h("p", { class: "lib-unit" }, "Goes with ", h("a", { href: "#" + u.id, text: P.itemTag(u) + " · " + (u.plainTitle || u.short) })) : null);
+  }
   function renderLibrary() {
     var page = h("div", { class: "page" });
     var groups = P.library || [];
-    var count = groups.reduce(function (a, g) { return a + g.items.length; }, 0);
+    function typeOf(g) { return g.type || "reading"; }
+    function count(type) { return groups.filter(function (g) { return type === "all" || typeOf(g) === type; }).reduce(function (a, g) { return a + g.items.length; }, 0); }
+    var view = P.store.get("library-view", "reading");
     page.appendChild(h("header", { class: "page-head" },
-      h("div", { class: "eyebrow" }, h("span", { text: count + " papers, articles, and books" })),
+      h("div", { class: "eyebrow" }, h("span", { text: count("reading") + " papers and readings · " + count("tools") + " tools and repositories" })),
       h("h1", { text: "Library" }),
-      P.richEl("p", { class: "dek" }, "Everything Routes 2 to 4 draw on, each explained in two plain sentences, with the unit where it matters most. You do not need to read any of it to follow the routes. Route 1's nine papers live on their own stations.")
+      P.richEl("p", { class: "dek" }, "Everything Routes 2 to 4 draw on: the papers and articles, and the tools, plugins, and open-source projects, each explained in plain words with the unit where it matters most. You do not need any of it to follow the routes. Route 1's nine papers live on their own stations.")
     ));
-    page.appendChild(h("nav", { class: "jump", "aria-label": "Library sections" }, groups.map(function (g, i) {
-      var b = h("button", { type: "button", class: "chip", text: g.short || g.title });
-      b.addEventListener("click", function () { jumpTo("lib-" + i); });
-      return b;
-    })));
-    groups.forEach(function (g, gi) {
-      page.appendChild(section(g.title, pad(gi + 1), h("div", { class: "lib-list" }, g.items.map(function (it) {
-        var u = it.unit ? P.item(it.unit) : null;
-        return h("div", { class: "lib-item" },
-          h("div", { class: "lib-head" },
-            it.url ? h("a", { class: "lib-t", href: it.url, target: "_blank", rel: "noopener", text: it.t + " ↗" }) : h("span", { class: "lib-t", text: it.t }),
-            h("span", { class: "lib-who", text: [it.who, it.year, it.kind].filter(Boolean).join(" · ") })),
-          P.richEl("p", null, it.plain),
-          it.caution ? P.richEl("p", { class: "lib-caution" }, "<b>Read with care:</b> " + it.caution) : null,
-          u ? h("p", { class: "lib-unit" }, "Read it with ", h("a", { href: "#" + u.id, text: P.itemTag(u) + " · " + (u.plainTitle || u.short) })) : null);
-      })), g.intro, "lib-" + gi));
-    });
+    var body = h("div");
+    var filter = h("div", { class: "scroll-x lib-filter" }, P.seg([
+      { value: "reading", label: "Papers and reading (" + count("reading") + ")" },
+      { value: "tools", label: "Tools and repositories (" + count("tools") + ")" },
+      { value: "all", label: "Everything" }], view, function (v) { view = v; P.store.set("library-view", v); paint(); }, "Library section"));
+    page.appendChild(filter);
+    page.appendChild(body);
+    function paint() {
+      P.clear(body);
+      var shown = groups.filter(function (g) { return view === "all" || typeOf(g) === view; });
+      body.appendChild(h("nav", { class: "jump", "aria-label": "Library sections" }, shown.map(function (g, i) {
+        var b = h("button", { type: "button", class: "chip", text: g.short || g.title });
+        b.addEventListener("click", function () { jumpTo("lib-" + i); });
+        return b;
+      })));
+      shown.forEach(function (g, gi) {
+        body.appendChild(section(g.title, pad(gi + 1), h("div", { class: "lib-list" }, g.items.map(libraryItem)), g.intro, "lib-" + gi));
+      });
+    }
+    paint();
     page.appendChild(h("div", { class: "callout", style: { marginTop: "2rem" } }, h("span", { class: "callout-k", text: "Credit" }),
-      P.richEl("p", null, "Routes 2 to 4 and this library are adapted from <a href=\"https://secondbrainos.dev/\" target=\"_blank\" rel=\"noopener\">Second Brain OS</a>, an open guide to second brains and AI agents published under the MIT license. Paper Trail rewrites its material for readers new to AI and adds figures, quizzes, and practice prompts. Facts dated 2026 come from that guide and from the sources it cites.")));
+      P.richEl("p", null, "Routes 2 to 4 and this library are adapted from <a href=\"https://secondbrainos.dev/\" target=\"_blank\" rel=\"noopener\">Second Brain OS</a>, an open guide to second brains and AI agents published under the MIT license. Paper Trail rewrites its material for readers new to AI and adds figures, quizzes, and practice prompts. Facts dated 2026, star counts, and install counts come from that guide and the sources it cites, and will drift.")));
     return page;
   }
 
@@ -1159,7 +1181,7 @@
     page.appendChild(h("header", { class: "page-head" },
       h("div", { class: "eyebrow" }, h("span", { text: "For planning, design reviews, and vendor calls" })),
       h("h1", { text: "The AI project toolkit" }),
-      P.richEl("p", { class: "dek" }, "The papers turned into tools for running AI projects: a helper for choosing between prompting, retrieval, and fine-tuning, back-of-envelope calculators for training cost and serving capacity, a map of the LLM lifecycle, and the questions to ask your ML team.")
+      P.richEl("p", { class: "dek" }, "The papers turned into tools for running AI projects: a helper for choosing between prompting, retrieval, and fine-tuning, back-of-envelope calculators for training cost and serving capacity, a map of the LLM lifecycle, and the questions to ask your ML team. Then the same for agents: when to build one, a go-live checklist, a run-cost calculator, an automation-threshold calculator, and the questions to ask an agent team.")
     ));
     page.appendChild(section("Choose an approach", "01", figure({ w: "decide", k: "Decision helper", title: "Prompt, retrieve, fine-tune, or train?", text: "Answer a few questions about your use case. The helper recommends the cheapest approach likely to work and names the station that explains it." }, "toolkit")));
     page.appendChild(section("Estimate training cost", "02", figure({ w: "traincost", k: "Calculator", title: "What would it cost to train this model?", text: "Uses the rule of thumb from the scaling-law papers: training compute ≈ 6 × parameters × tokens. Change the GPU, its utilization, and the hourly price to match a real quote." }, "toolkit")));
@@ -1175,7 +1197,71 @@
     ].map(function (g) {
       return h("div", { class: "pm-card" }, h("span", { class: "q", text: g[0] }), h("ul", { class: "small" }, g[1].map(function (q) { return h("li", { text: q }); })));
     }))));
+
+    /* Agent projects (Routes 2 to 4) */
+    page.appendChild(section("Agent or workflow?", "06", figure({ w: "layers", k: "Decision ladder", title: "Climb only as far as the task needs", plain: "Each rung costs more and is harder to test. Click a rung to see when it earns its place.",
+      opts: { top: "cheapest, most predictable", bottom: "most flexible, most expensive", items: [
+        { t: "One model call", s: "a single prompt and answer", tag: "1×", c: 3, d: "Classify, summarize, or draft one thing. Often enough, and the easiest to test." },
+        { t: "Workflow", s: "steps your code defines", tag: "about 1×", c: 1, d: "Use when a careful person could write the steps on one page, even with one model call inside for a judgement. Cheaper, parallel, debuggable, testable." },
+        { t: "Single agent", s: "the model picks each next step", tag: "≈ 4× tokens", c: 2, d: "Only when the steps cannot be known in advance but the result can be checked: debugging, investigation, research. Needs a goal test, an outside checker, a stop rule, a budget, and a fallback (Unit 2.02)." },
+        { t: "Multi-agent", s: "a lead and specialists", tag: "≈ 15× tokens", c: 8, d: "Only when each task's value covers the bill and the subtasks are loosely coupled. A poor fit for tightly coupled work such as most coding (Unit 2.00)." }
+      ] }, takeaway: "Token multipliers from Anthropic's multi-agent research write-up. Most systems should stop early." }, "toolkit")));
+    page.appendChild(section("Agent go-live checklist", "07", goLiveChecklist(),
+      "Tick what is in place before an agent runs unattended. The first item in each layer is the day-one move from Unit 2.06; the rest come from the matching unit. Saved in this browser; copy it into your project tracker."));
+    page.appendChild(section("Context window and run cost", "08", figure({ w: "budget", k: "Calculator", title: "What fills the window, and what a run costs", plain: "Move the sliders to match an agent your team is building: tools loaded, turns per run, documents pasted in, and your provider's price.", takeaway: "Ask for the cache read rate. A dynamic value in the system prompt silently removes the biggest saving." }, "toolkit")));
+    page.appendChild(section("Set an automation threshold", "09", figure({ w: "threshold", k: "Calculator", title: "How sure should the system be before it acts alone?", plain: "Price the two mistakes: a wrong automatic action versus an unnecessary escalation. The cheapest threshold depends on the decision, not on the model.", takeaway: "Agree the tolerance with the business owner, then check the model's accuracy by confidence band on your own labelled data." }, "toolkit")));
+    page.appendChild(section("Questions to ask about an agent", "10", h("div", { class: "pm-grid" }, [
+      ["Context (Unit 2.01)", ["How many tools are loaded, and how many tokens do their descriptions take?", "Is anything dynamic in the system prompt? What is the cache read rate?", "Where does the current goal sit in a long run?"]],
+      ["Loop (Unit 2.02)", ["What is the testable definition of done, and who or what checks it?", "What are the turn and dollar limits? What happens when one fires?", "What share of runs ends in the fallback, and is it rising?"]],
+      ["Gate (Unit 2.03)", ["Which decisions go to the big model that a rule or classifier could make?", "What threshold triggers automatic action, and who set it?", "Has the confidence been checked against our labels, by band?"]],
+      ["Harness (Unit 2.04)", ["What can the agent physically not reach? What is the worst possible session?", "Which actions need human approval, and what is our approval rate?", "Does it combine private data, untrusted content, and a way to send data out?"]],
+      ["Evals (Unit 2.05)", ["How many golden cases, and how many came from real failures?", "Do we check behaviour on the trace, or only final answers?", "Has the LLM judge been compared with human labels?"]],
+      ["Production (Unit 2.06)", ["Does every model call go through one gateway with cost tracking?", "Can we trace any run: trigger, prompt version, tools, cost?", "How are prompt and tool changes versioned, tested, and rolled back?"]]
+    ].map(function (g) {
+      return h("div", { class: "pm-card" }, h("span", { class: "q", text: g[0] }), h("ul", { class: "small" }, g[1].map(function (q) { return h("li", { text: q }); })));
+    }))));
     return page;
+  }
+
+  /* Agent go-live checklist: per-viewer convenience, stored locally. */
+  var GO_LIVE = [
+    { layer: "Context", unit: "agents-context", items: ["The stable part of the prompt is byte-identical on every call", "Tool list frozen per run; disabled tools are blocked, not removed", "Large tool results go to disk with a short receipt", "The current goal is restated at the end of long runs"] },
+    { layer: "Loop", unit: "agents-loop", items: ["A turn limit and a dollar limit end runs loudly, with the trace saved", "Done is checked by something outside the model", "Two identical attempts in a row stop the run", "Every non-success goes to a plain fallback"] },
+    { layer: "Gate", unit: "agents-gate", items: ["200 real examples of the most common decision are labelled", "Accuracy is known, by confidence band", "The threshold is agreed with the business owner", "Below the threshold, items escalate; the gate never guesses"] },
+    { layer: "Harness", unit: "agents-harness", items: ["The agent runs as its own user that cannot delete anything", "It works in a sandbox, branch, or read-only database user", "Approval is required only for irreversible actions", "Every rule has a quarterly review entry"] },
+    { layer: "Evals", unit: "agents-evals", items: ["The last five failures are written down as test cases", "Behavioural checks run on the trace in seconds", "Any LLM judge agrees with human labels at least 8 times in 10", "Someone hand-grades five real runs each week"] },
+    { layer: "Production", unit: "agents-production", items: ["Every model call goes through one gateway (masking, caching, retries, cost)", "Every run is traced with tokens, tools, and who triggered it", "Releases go out as a canary with instant rollback", "Prompt-injection risks were reviewed (the lethal trifecta)"] }
+  ];
+  function goLiveChecklist() {
+    var state = P.store.get("toolkit-golive", {});
+    var meter = h("i"), label = h("span", { class: "small muted" });
+    var total = GO_LIVE.reduce(function (a, g) { return a + g.items.length; }, 0);
+    function paintMeter() {
+      var done = Object.keys(state).filter(function (k) { return state[k]; }).length;
+      meter.style.width = (done / total) * 100 + "%";
+      label.textContent = done + " of " + total + " in place";
+    }
+    var grid = h("div", { class: "pm-grid" }, GO_LIVE.map(function (g, gi) {
+      var u = P.unit(g.unit);
+      return h("div", { class: "pm-card" },
+        h("span", { class: "q" }, g.layer, u ? h("a", { href: "#" + u.id, class: "small", style: { marginLeft: "0.5rem", fontWeight: "400" }, text: P.itemTag(u) }) : null),
+        h("div", { class: "checklist" }, g.items.map(function (txt, ii) {
+          var key = gi + "-" + ii, id = "golive-" + key;
+          var input = h("input", { type: "checkbox", id: id, checked: !!state[key] });
+          var row = h("label", { class: "check" + (state[key] ? " done" : ""), for: id }, input, h("span", { class: "check-text" }, h("span", { text: txt })));
+          input.addEventListener("change", function () { state[key] = input.checked; P.store.set("toolkit-golive", state); row.classList.toggle("done", input.checked); paintMeter(); });
+          return row;
+        })));
+    }));
+    var copyBtn = h("button", { type: "button", class: "btn small", text: "Copy as a checklist" });
+    copyBtn.addEventListener("click", function () {
+      var text = "AGENT GO-LIVE CHECKLIST\n" + GO_LIVE.map(function (g, gi) {
+        return "\n" + g.layer.toUpperCase() + "\n" + g.items.map(function (txt, ii) { return (state[gi + "-" + ii] ? "[x] " : "[ ] ") + txt; }).join("\n");
+      }).join("\n");
+      P.copy(text, copyBtn, null);
+    });
+    paintMeter();
+    return h("div", { style: { display: "grid", gap: "0.75rem" } }, h("div", { class: "meter" }, meter), h("div", { class: "row" }, label, copyBtn), grid);
   }
 
   /* ---------- Portfolio and capstone ---------- */

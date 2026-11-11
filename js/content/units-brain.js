@@ -40,6 +40,14 @@
       "It feels underwhelming for the first weeks. The payoff comes from density."
     ],
     figures: [
+      { w: "flow", title: "How the second brain works", plain: "You save things; an agent turns them into linked pages; you ask questions. Click each stage.",
+        opts: { cycle: "Ask anything: the agent answers from the wiki, citing pages", steps: [
+          { t: "You", s: "clip · save · dump", d: "You capture with one click or one command: an article, a transcript, a PDF, a chat export, a voice note. No filing decisions.", like: "Dropping post in the inbox tray." },
+          { t: "raw/", s: "the archive", d: "Everything lands untouched in raw/: articles, transcripts, PDFs, chat exports. It is never edited and rarely read again; it is the evidence behind the wiki.", like: "The original receipts in a shoebox." },
+          { t: "The agent", s: "ingest · extract · link · lint", d: "Claude Code reads new material, writes or updates pages, links them both ways, and checks the structure, logging every run.", like: "A librarian cataloging and cross-referencing." },
+          { t: "wiki/", s: "sources · concepts · entities · synthesis", d: "Plain-language pages, one idea each, densely linked. New sources update existing pages instead of piling up beside them, so the vault gets better as it grows, not just bigger.", like: "The reference book you actually read." }
+        ] },
+        takeaway: "Three rules the whole system rests on: nothing is ingested until it is linked; contradictions are recorded, never overwritten; and no vector database until you need one." },
       { w: "compare", title: "Wiki or RAG: two ways to ask your documents questions", plain: "Most advice says to put your documents in a search index (RAG, which you met in Route 1). This guide builds a wiki instead. The difference is when the work happens.",
         opts: { cols: [{ t: "RAG", s: "search the pile at question time" }, { t: "Wiki", s: "process once, reuse forever" }],
           rows: [["Where the work happens", "At every question, from scratch", "Once, when a source is added"],
@@ -141,7 +149,7 @@
     explain: [
       "[[obsidian|Obsidian]] is the storage half. It is free for personal use, keeps every note as a plain text file on your own computer, and draws the links between notes as a map. Claude Code is the half that reads and writes; it needs a paid Claude plan, which you already have.",
       "The most important file is [[claude-md|CLAUDE.md]] at the top of the vault. The agent reads it at the start of every session. A good one is the difference between an assistant that knows your situation and one you brief from scratch every time.",
-      "The folder layout keeps the two layers apart: <code>raw/</code> for untouched sources, <code>wiki/</code> for the knowledge layer, <code>projects/</code> for current work, and <code>output/</code> for things you will share. Git records every change, so a bad agent run is one command to undo."
+      "The folder layout keeps the [[two-layers]] apart: [[raw-folder|<code>raw/</code>]] for untouched sources, <code>wiki/</code> for the knowledge layer, <code>projects/</code> for current work, and <code>output/</code> for things you will share. Git records every change, so a bad agent run is one command to undo."
     ],
     everyday: { title: "Setting up a new office", text: "A filing cabinet (Obsidian and the folders), an assistant with a key to the office (Claude Code), an onboarding brief on their desk (CLAUDE.md), and a CCTV recorder that lets you rewind any day (git)." },
     example: { title: "Your course vault", text: "A folder called course-vault with a CLAUDE.md describing you as a project manager learning AI, wiki folders for concepts, sources, people, and tools, and one project folder for your capstone, Delivery Copilot. It lives in your portfolio repository, so it is versioned and public-safe." },
@@ -239,11 +247,13 @@
     ],
     practice: {
       title: "Set up your course vault", min: 45,
+      shortcut: "Second Brain OS ships a free starter kit: a vault template with a working CLAUDE.md and page templates, plus 18 skills, 72 commands, 6 subagents, and 4 scripts. The second box below copies it into a new folder. Setting up by hand first (the prompt) teaches you what each piece is for; the kit is a good second vault or a reference to compare against.",
       intro: "You install Obsidian, create the course vault inside your portfolio repository, get interviewed for its CLAUDE.md, create the layout with one project for Delivery Copilot, and commit. This vault is public-safe by design; keep any work or personal vault separate and private.",
       steps: ["Install Obsidian (free) and open your portfolio repository's course-vault folder as a vault (create it if needed).", "Make one note by hand with a &#91;&#91;goals&#93;&#93; link and click through to create the page.", "Open Claude Code in the course-vault folder and paste the prompt.", "Open the vault in Obsidian and look at the graph view: a few dots, which is normal."],
       prompt: "Set up this folder as my second brain about learning AI as a project manager.\n1. Interview me ONE question at a time for CLAUDE.md: who I am, my goals for this year and this quarter, how to talk to me, my strengths and weak spots, and current projects. Include the privacy rule from charter.md: this vault is public, so never write work data, client names, or personal details.\n2. Add a \"Vault rules\" section to CLAUDE.md: never edit raw/; one idea per page; link every new page to at least two existing pages; log every run in wiki/log.md; anything for sharing goes to output/.\n3. Create raw/, raw/assets/, wiki/sources/, wiki/entities/, wiki/concepts/, wiki/synthesis/, wiki/index.md, wiki/log.md, projects/, output/.\n4. Create projects/delivery-copilot/ with Inputs/, Process/, Outputs/, Feedback/, and a CLAUDE.md stating its one goal and your role. Interview me if needed.\n5. Move charter.md into the vault root and link it from CLAUDE.md.\n6. Add a .gitignore for .obsidian/workspace*.json and .trash/, then show me the git commands to commit. Do not push.\nFinally: read CLAUDE.md and wiki/index.md and tell me what the vault contains and what is missing.",
       observe: ["Did the agent's final summary match what you asked for? If it invented structure, tighten CLAUDE.md.", "Is your privacy rule stated clearly enough that a stranger could follow it?"],
-      done: "The vault opens in Obsidian, CLAUDE.md is specific to you, the layout and Delivery Copilot project exist, and the first commit is made."
+      done: "The vault opens in Obsidian, CLAUDE.md is specific to you, the layout and Delivery Copilot project exist, and the first commit is made.",
+      extra: [{ title: "Optional: the Second Brain OS starter kit (terminal)", text: "# copy the starter vault, skills, commands, agents and scripts into ~/brain\ngit clone https://github.com/undefined-ui/second-brain-os.git\ncp -r second-brain-os/vault-template ~/brain\nmkdir -p ~/brain/.claude\ncp -r second-brain-os/skills   ~/brain/.claude/skills\ncp -r second-brain-os/commands ~/brain/.claude/commands\ncp -r second-brain-os/agents   ~/brain/.claude/agents\ncp -r second-brain-os/scripts  ~/brain/scripts\n# the folder READMEs are for reading on GitHub, not for the agent\nrm ~/brain/.claude/*/README.md ~/brain/scripts/README.md\ncd ~/brain && claude\n# On Windows, use python where the guide says python3." }]
     },
     quiz: [
       { q: "When should you add the MCP connection to Obsidian?", options: ["Before anything else", "When you need the vault reachable from sessions not running inside it, such as scheduled tasks", "Never", "Only on Windows"], answer: 1, why: "Start on the plain filesystem. MCP earns its place when you need the vault from elsewhere, and it requires Obsidian to be open." },
@@ -413,7 +423,7 @@
           "Concept pages are where the agent should combine sources. Everywhere else it records."] },
       { title: "Linking rules", plain: "Link the first mention of any concept or entity, on every page. Applied consistently, that produces the graph on its own, with no separate linking chore.",
         points: ["<b>Link, do not restate.</b> If an explanation exists on another page, link it. Knowledge lives in one place and improves once.",
-          "<b>Both directions.</b> A new page links out; what it references links back. One-way links make pages the vault never reaches.",
+          "<b>Both directions.</b> A new page links out; what it references links back (a [[backlink]]). One-way links make pages the vault never reaches.",
           "<b>Gaps are useful.</b> Write a link to a page that does not exist yet, then create it in the same run or list it under Gaps in the index. A page three sources link to is exactly what to write or read next.",
           "<b>Shape over count.</b> A page with no outbound links is a dead end; one with forty is a list pretending to be a page. Below about two links per page across the vault, the graph cannot answer anything the pages could not alone.",
           "<b>Split hubs.</b> If forty pages link to one broad concept, they are linking to four different aspects of it.",
@@ -455,7 +465,7 @@
         points: ["Overwriting is the worst failure because it is invisible: the page just says something different, with the same confidence, ranked by recency rather than evidence.",
           "Label confidence: <b>stated</b> by a trusted primary source, <b>reported</b> by secondary coverage, <b>self-reported</b> by the party it benefits, or <b>unverified</b>. A company's own claim must never lose its label.",
           "The CLAUDE.md rule: “Never resolve a contradiction by picking the more recent source.”"] },
-      { title: "The catalog and the logbook", plain: "<code>index.md</code> lists every page with a one-line description, grouped by type and theme, with Gaps at the bottom. <code>log.md</code> records one line per agent operation.",
+      { title: "The catalog and the logbook", plain: "[[index-and-log|<code>index.md</code>]] lists every page with a one-line description, grouped by type and theme, with Gaps at the bottom. <code>log.md</code> records one line per agent operation.",
         code: { title: "Three log lines", lang: "text", lines: [
           ["2026-09-07 ingest raw/karpathy-gist.md -> 1 source, 2 concepts, 1 entity, 9 links", "What came in, and what it produced."],
           ["2026-09-07 merge [[RAG]] <- [[Retrieval-augmented generation]]", "A merge, traceable later."],
@@ -648,7 +658,8 @@
           "Keep hooks fast (well under a second) and silent when they pass; noisy hooks train you to ignore hook output.",
           "Decide whether a failing hook blocks: validation should block; notifications should not. A blocking hook must be simple enough to fail only for the reason it exists."] },
       { title: "Skills and slash commands", plain: "A [[skill]] teaches repeatable behaviour and loads when relevant. A [[slash-command]] is a shortcut that points at a skill. Behaviour belongs in the skill, so ingesting works the same whether triggered by <code>/ingest</code>, a schedule, or you saying “add this”.",
-        points: ["Second Brain OS ships 18 skills and 72 commands; install them in the vault's <code>.claude/skills/</code> and <code>.claude/commands/</code> so they are versioned with your notes.",
+        points: ["Second Brain OS ships 18 skills (one per workflow: ingest, backfill, chat import, transcript, lint, merge, rename, graph, metrics, query, changed-my-mind, report, write, quiz, review, project, publish, privacy), 6 subagents (the six roles), and 72 commands in nine groups: ingestion, structuring, graph, retrieval, maintenance, outputs, projects, safety, and setup. Start with <code>/ingest</code>, <code>/ask</code>, <code>/lint</code>, and <code>/review</code>. Install them in the vault's <code>.claude/</code> folder so they are versioned with your notes.",
+          "Skills are plain SKILL.md files, an open format that moved to the Linux Foundation's Agentic AI Foundation in October 2026, so they work with any agent that reads it. Claude Code's <code>/skill-doctor</code> shows what each loaded skill costs in context and which never fire.",
           "Write your own skill when you do something repeatedly, have opinions about how, and the opinions are not obvious.",
           "Explain the why. “Never overwrite a contradiction” is applied too literally; adding “because the history of what you believed is what this vault has that a search engine does not” generalizes to cases you never described. An all-caps NEVER with no reason is usually a missing explanation.",
           "Test a skill on three or four real cases before a scheduled task uses it."] },
@@ -901,7 +912,7 @@
     ],
     lessons: [
       { title: "Linting the vault", plain: "A lint pass finds the six kinds of structural rot in the first figure above. Report before repairing: a linter that merges on its own judgement destroys work; one that only reports produces a list nobody acts on.",
-        points: ["Run it weekly, or after any import of more than about twenty sources, not after every small ingest.", "Run it on a clean git state, so a wrong repair is one command away from undone.", "Inside Obsidian, the “Find orphaned files and broken links” plugin covers two of the checks visually."] },
+        points: ["Run it weekly, or after any import of more than about twenty sources, not after every small ingest.", "Run it on a clean git state, so a wrong repair is one command away from undone.", "Inside Obsidian, the “Find orphaned files and broken links” plugin covers two of the checks visually.", "For a fast read without the agent, Second Brain OS's free scripts <code>link_check.py</code> (broken links, orphans, stubs) and <code>vault_stats.py</code> (counts, link density, orphan rate, most-linked pages) run in seconds."] },
       { title: "The review rhythm", plain: "Weekly, ten minutes: the agent prepares, you read. Monthly: look at the vault's structure. Quarterly: two honest questions.",
         like: "A weekly team stand-up, a monthly report, and a quarterly retrospective.",
         points: ["<b>Weekly:</b> what was added, which concepts gained the most links, unresolved contradictions, open questions, and three things to read or write next. Where your links went is where your attention actually was.",
@@ -919,7 +930,7 @@
         points: ["A workable arrangement: a private git remote pushed after every run, sync for working across machines, and a monthly archive to separate storage. Three copies, one of them dumb and slow.",
           "<b>Test a restore once:</b> restore the archive somewhere else, open it in Obsidian, and check the links. The common failure is an archive that skipped a folder or caught the vault mid-sync.",
           "Portability checks: nothing important lives only in plugin data; links resolve without Obsidian; the agent's instructions (CLAUDE.md, skills, commands) live in the vault, not in a chat history."] },
-      { title: "Privacy", plain: "Decide at capture, not later. Redacting after ingest does not work: by then the material has spread into concept pages, links, and summaries.",
+      { title: "Privacy", plain: "[[privacy-and-secrets|Privacy]]: decide at capture, not later. Redacting after ingest does not work: by then the material has spread into concept pages, links, and summaries.",
         points: ["<b>Does not belong:</b> credentials of any kind; other people's private information (they did not consent to being ingested); material under confidentiality obligations, such as client work under NDA in a vault that syncs to a personal cloud.",
           "<b>Separate vaults beat careful filtering.</b> A private folder inside one vault relies on every query, export, and publish step respecting the boundary. Two vaults cannot leak into each other.",
           "<b>Local models for sensitive material:</b> a free local model (through Ollama) can ingest a vault that must never leave your machine. Quality is lower; worth it for medical, legal, financial, or work-confidential material.",

@@ -2,7 +2,7 @@
 
 Four interactive study routes for IT project and program managers moving into AI. Written for people with no AI background: every page starts in plain English with an everyday comparison and an example from project work, then brings in the real terms, then hands-on practice with free tools and ready prompts for Claude Code.
 
-A **Start here** page explains how AI works in nine small steps. A **Library** explains every paper behind Routes 2 to 4 in two plain sentences each. A **Glossary** of 200+ terms opens from any highlighted word.
+A **Start here** page explains how AI works in nine small steps. A **Library** explains every paper behind Routes 2 to 4 in two plain sentences each, and lists the tools, Obsidian plugins, open-source projects, and ready-made Claude Code toolkit they use. The **Toolkit** page adds agent tools for project managers: a build-or-not ladder, a go-live checklist, and run-cost and automation-threshold calculators. A **Glossary** of 200+ terms opens from any highlighted word.
 
 | Route | What it covers | Size |
 |-------|----------------|------|
@@ -96,6 +96,7 @@ js/content/portfolio.js    project-document templates, capstone, general intervi
 js/content/units-*.js      Routes 2 to 4: agents, second brain, and deep-dive units
 js/content/glossary-agents.js  glossary terms for Routes 2 to 4
 js/content/library.js      the Library: every paper and reading behind Routes 2 to 4
+js/content/library-tools.js  the Library: tools, plugins, repositories, and recent releases
 js/widgets/diagrams.js     data-driven diagrams and simulators used by the units
 labs/                      lab guide, templates, and reference code
 portfolio-template/        starter files for your own public portfolio repository

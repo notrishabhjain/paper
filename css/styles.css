@@ -1108,6 +1108,8 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); }
 .track-card { display: flex; flex-direction: column; }
 .track-card .tc-stats { margin-top: auto; padding-top: 0.25rem; }
 .guide + .jump { margin-top: 1.25rem; }
+.lib-filter { margin-top: 1.25rem; }
+.lib-filter + div > .jump { margin-top: 1rem; }
 .btn[aria-pressed="true"] { border-color: var(--good); color: var(--good); }
 
 .route-lists { display: grid; gap: 0.6rem; }

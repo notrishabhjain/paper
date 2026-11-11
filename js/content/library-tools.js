@@ -1,0 +1,138 @@
+/* Library, second half: tools, plugins, repositories, and recent releases named by Second Brain OS
+   (secondbrainos.dev, MIT license). Descriptions follow the source; star and install counts are the
+   source's own snapshots (September or November 2026) and will drift. */
+(function () {
+  "use strict";
+  var P = window.Portal;
+  P.library = P.library || [];
+  var SB = "https://github.com/undefined-ui/second-brain-os/tree/main/";
+  var NEWS = "Released in September or October 2026; summary as reported by Second Brain OS.";
+
+  P.library.push(
+    { type: "tools", title: "Ready-made toolkit from Second Brain OS", short: "Ready-made toolkit",
+      intro: "Open-source Claude Code skills, commands, subagents, and scripts that do the practice of each unit for you. Install the course plugin with <code>claude plugin marketplace add undefined-ui/second-brain-os</code>, then <code>claude plugin install agents-course@second-brain-os</code>. They run inside Claude Code, on your existing plan.",
+      items: [
+        { t: "Context audit", who: "agents-course plugin", kind: "Claude Code skill · /agents-course:context-audit", url: SB + "plugins/agents-course/skills/context-audit", unit: "agents-context",
+          plain: "Measures the four places in your agent's context window and finds cache killers and window bloat. The audit from Unit 2.01, packaged." },
+        { t: "Goal test", who: "agents-course plugin", kind: "Claude Code skill · /agents-course:goal-test", url: SB + "plugins/agents-course/skills/goal-test", unit: "agents-loop",
+          plain: "Turns a task into a testable “done”, then generates the check script and a bounded loop around it." },
+        { t: "Loop critic", who: "agents-course plugin", kind: "Claude Code subagent", url: SB + "plugins/agents-course/agents", unit: "agents-loop",
+          plain: "A checker outside the model: an agent that reviews loop results in a clean context, never the one that did the work." },
+        { t: "Gate check", who: "agents-course plugin", kind: "Claude Code skill · /agents-course:gate-check", url: SB + "plugins/agents-course/skills/gate-check", unit: "agents-gate",
+          plain: "Finds the decisions in your pipeline that do not need the big model and proposes fail-closed gates for them." },
+        { t: "Harness audit", who: "agents-course plugin", kind: "Claude Code skill · /agents-course:harness-audit", url: SB + "plugins/agents-course/skills/harness-audit", unit: "agents-harness",
+          plain: "Walks the four rings (walls, guides, sensors, permissions), states the blast radius, and ranks the hardening list." },
+        { t: "Evals bootstrap", who: "agents-course plugin", kind: "Claude Code skill · /agents-course:evals-bootstrap", url: SB + "plugins/agents-course/skills/evals-bootstrap", unit: "agents-evals",
+          plain: "Mines real failures into test cases and generates the trace checker from Unit 2.05." },
+        { t: "Starter vault", who: "Second Brain OS", kind: "Template folder", url: SB + "vault-template", unit: "brain-setup",
+          plain: "A CLAUDE.md with page contracts and linking rules, the raw/ to wiki/ layout, a project pipeline, and four page templates. A shortcut for Unit 3.02." },
+        { t: "18 second-brain skills", who: "Second Brain OS", kind: "Claude Code skills", url: SB + "skills", unit: "brain-agents",
+          plain: "One per workflow: ingest, backfill, chat import, transcript cleanup, lint, merge, rename, graph, metrics, query, changed-my-mind, report, write, quiz, review, project, publish, and privacy." },
+        { t: "6 vault subagents", who: "Second Brain OS", kind: "Claude Code subagents", url: SB + "agents", unit: "brain-agents",
+          plain: "Ingestor, linker, researcher, reviewer, graph analyst, and curator: the six roles from Unit 3.06, four of them read-only." },
+        { t: "72 slash commands", who: "Second Brain OS", kind: "Claude Code commands", url: SB + "commands", unit: "brain-agents",
+          plain: "Short entry points into the skills, in nine groups: ingestion, structuring, graph, retrieval, maintenance, outputs, projects, safety, and setup. Start with /ingest, /ask, /lint, and /review." },
+        { t: "4 vault scripts", who: "Second Brain OS", kind: "Python, no dependencies", url: SB + "scripts", unit: "brain-graphs",
+          plain: "link_check.py (broken links, orphans, stubs), vault_stats.py (counts, link density, orphan rate), graph_export.py (CSV edges or GraphML for Gephi), and chat_export_to_md.py (a chat export as one markdown file per conversation)." }
+      ] },
+    { type: "tools", title: "Apps and tools for a second brain", short: "Apps and tools",
+      intro: "The core stack, the alternatives, and the tools for capture, search, graphs, and publishing. Free unless marked.",
+      items: [
+        { t: "Obsidian", kind: "Markdown editor · free for personal use", url: "https://obsidian.md", unit: "brain-setup", plain: "A local markdown editor; the vault is a plain folder, which is why agents work well with it." },
+        { t: "Obsidian Web Clipper", kind: "Browser extension · free", url: "https://obsidian.md/clipper", unit: "brain-ingest", plain: "The official extension that saves articles into raw/, using the same engine as Firefox Reader View." },
+        { t: "Claude Code", kind: "Agent · paid Claude plan", url: "https://code.claude.com/docs/en/setup", unit: "brain-setup", plain: "The agent that maintains the wiki. You already have access." },
+        { t: "Logseq", kind: "Open source · 45K stars", url: "https://github.com/logseq/logseq", unit: "brain-fix", plain: "An outliner on plain markdown with block-level references; an alternative home for a vault." },
+        { t: "Foam", kind: "Open source · 17K stars", url: "https://github.com/foambubble/foam", unit: "brain-fix", plain: "The same wikilink pattern inside VS Code." },
+        { t: "Joplin", kind: "Open source · 56K stars", url: "https://github.com/laurent22/joplin", plain: "Privacy-focused notes with sync across every platform." },
+        { t: "memos", kind: "Open source · 63K stars", url: "https://github.com/usememos/memos", unit: "brain-ingest", plain: "Self-hosted quick capture, markdown-native: a good raw/ inbox." },
+        { t: "Outline", kind: "Open source · 40K stars", url: "https://github.com/outline/outline", plain: "A team knowledge base: the right answer when it is not just you." },
+        { t: "AFFiNE, SiYuan, Trilium, Anytype, Dendron", kind: "Open source", url: "https://github.com/toeverything/AFFiNE", plain: "Other knowledge workspaces (docs and whiteboards, block-based, hierarchical, encrypted, or inside VS Code). Each stores knowledge in its own structure; plain markdown is the only format where leaving the tool costs nothing." },
+        { t: "Khoj", kind: "Open source · 37K stars", url: "https://github.com/khoj-ai/khoj", unit: "brain-concepts", plain: "A self-hostable AI second brain over your documents, with custom agents and scheduled automations. A product rather than a pattern: convenient, at the cost of portability." },
+        { t: "Quivr and Reor", kind: "Open source", url: "https://github.com/reorproject/reor", plain: "Quivr is opinionated RAG to embed in your own app; Reor is a local-first note app that links notes automatically as you write." },
+        { t: "yt-dlp", kind: "Open source", url: "https://github.com/yt-dlp/yt-dlp", unit: "brain-ingest", plain: "Downloads subtitles and audio from video platforms." },
+        { t: "youtube-transcript-api", kind: "Python library", url: "https://github.com/jdepoix/youtube-transcript-api", unit: "brain-ingest", plain: "Fetches YouTube transcripts from Python." },
+        { t: "OCRmyPDF", kind: "Open source", url: "https://github.com/ocrmypdf/OCRmyPDF", unit: "brain-ingest", plain: "Adds a text layer to scanned PDFs so they can be read." },
+        { t: "Zotero", kind: "Open source reference manager", url: "https://github.com/zotero/zotero", unit: "brain-ingest", plain: "Manages papers and their metadata, with a markdown export path into raw/." },
+        { t: "Readwise", kind: "Paid service", url: "https://readwise.io", unit: "brain-ingest", plain: "Syncs Kindle and read-later highlights into Obsidian. The only paid tool in this list besides Claude Code." },
+        { t: "ripgrep", kind: "Open source", url: "https://github.com/BurntSushi/ripgrep", unit: "brain-retrieval", plain: "Fast enough that most vaults never need a search index." },
+        { t: "NetworkX", kind: "Python library", url: "https://networkx.org", unit: "brain-graphs", plain: "Graph analysis once you have exported an edge list." },
+        { t: "Ladybug", kind: "Embedded graph database", url: "https://github.com/LadybugDB/ladybug", unit: "deep-graphs", plain: "No server; reads CSV directly. The maintained continuation of Kuzu, which was archived in October 2025." },
+        { t: "Neo4j", kind: "Graph database server", url: "https://neo4j.com", unit: "deep-graphs", plain: "The full graph database. Overkill unless you are building something on top." },
+        { t: "Gephi", kind: "Open source", url: "https://gephi.org", unit: "brain-graphs", plain: "Visual graph exploration beyond Obsidian's graph view." },
+        { t: "txtai", kind: "Open source · 13K stars", url: "https://github.com/neuml/txtai", unit: "brain-retrieval", plain: "Semantic search and LLM workflows, if you decide you need embeddings." },
+        { t: "Quartz", kind: "Open source · 13K stars", url: "https://github.com/jackyzha0/quartz", unit: "brain-outputs", plain: "Turns a vault into a static site with backlinks, a local graph, and search." }
+      ] },
+    { type: "tools", title: "Obsidian plugins", short: "Obsidian plugins",
+      intro: "The plugins that matter for an agent-maintained vault, by job. Install counts are Obsidian's own, September 2026. Add a plugin only when you hit the problem it solves.",
+      items: [
+        { t: "Claudian", kind: "Agents in Obsidian · 2.0M installs", url: "https://github.com/yishentu/claudian", unit: "brain-setup", plain: "Embeds Claude Code, Codex, and other local agents in the vault." },
+        { t: "Copilot", kind: "Agents in Obsidian · 1.8M installs", url: "https://github.com/logancyang/obsidian-copilot", unit: "brain-setup", plain: "Runs Claude Code, Codex, and OpenCode inside your vault." },
+        { t: "Smart Connections", kind: "Agents in Obsidian · 1.2M installs", url: "https://github.com/brianpetro/obsidian-smart-connections", unit: "brain-structure", plain: "A local embedding model suggests related notes while you write, with no API key." },
+        { t: "Local REST API with MCP", kind: "Agents in Obsidian · 712K installs", url: "https://github.com/coddingtonbear/obsidian-local-rest-api", unit: "brain-setup", plain: "Serves the vault over a secure local API, now with a built-in MCP server." },
+        { t: "Agent Client and Smart Composer", kind: "Agents in Obsidian", url: "https://github.com/rait-09/obsidian-agent-client", plain: "Chat with Claude Code, Codex, or Gemini CLI from inside Obsidian; Smart Composer adds AI chat with note context and one-click edits." },
+        { t: "Templater", kind: "Structure · 5.5M installs", url: "https://github.com/SilentVoid13/Templater", unit: "brain-setup", plain: "Dynamic templates, for the pages you write by hand." },
+        { t: "Dataview", kind: "Structure · 4.9M installs", url: "https://github.com/blacksmithgu/obsidian-dataview", unit: "brain-retrieval", plain: "A query language over your frontmatter: answers “which pages have property P?”." },
+        { t: "Metadata Menu and Supercharged Links", kind: "Structure", url: "https://github.com/mdelobelle/metadatamenu", unit: "brain-structure", plain: "Manage frontmatter fields at scale once your schema is fixed, and style links by the target page's type." },
+        { t: "ExcaliBrain", kind: "Graph · 336K installs", url: "https://github.com/zsviczian/excalibrain", unit: "brain-graphs", plain: "A structured mind map that derives five relationship types from links, Dataview fields, and tags." },
+        { t: "Juggl", kind: "Graph · 136K installs", url: "https://github.com/HEmile/juggl", unit: "brain-graphs", plain: "An interactive graph with typed edges and a saveable workspace." },
+        { t: "Graph Analysis, Breadcrumbs, 3D Graph", kind: "Graph", url: "https://github.com/SkepticMystic/graph-analysis", unit: "brain-graphs", plain: "Graph algorithms and similarity inside the vault; typed links with trees and exports; and a 3D view that shows clusters a flat hairball hides." },
+        { t: "Git", kind: "Maintenance · 3.1M installs", url: "https://github.com/Vinzent03/obsidian-git", unit: "brain-maintain", plain: "Commit and sync the vault from inside Obsidian." },
+        { t: "Omnisearch", kind: "Maintenance · 1.8M installs", url: "https://github.com/scambier/obsidian-omnisearch", unit: "brain-retrieval", plain: "Better full-text search, including inside PDFs." },
+        { t: "Importer", kind: "Maintenance · 1.6M installs", url: "https://github.com/obsidianmd/obsidian-importer", unit: "brain-fix", plain: "The official importer from Notion, Evernote, Roam, Bear, and Apple Notes: the first step for a backfill." },
+        { t: "Linter", kind: "Maintenance · 1.0M installs", url: "https://github.com/platers/obsidian-linter", unit: "brain-setup", plain: "Formats notes to consistent rules. Set it carefully: it rewrites files and can fight the agent." },
+        { t: "Find orphaned files and broken links", kind: "Maintenance · 225K installs", url: "https://github.com/Vinzent03/find-unlinked-files", unit: "brain-maintain", plain: "Exactly what a lint checks, without leaving Obsidian." },
+        { t: "Excalidraw", kind: "Capture · 7.8M installs", url: "https://github.com/zsviczian/obsidian-excalidraw-plugin", plain: "The most installed plugin in the catalog: diagrams that live in the vault as files." },
+        { t: "QuickAdd", kind: "Capture · 2.1M installs", url: "https://github.com/chhoumann/quickadd", unit: "brain-ingest", plain: "One-keystroke capture into a chosen folder and template." },
+        { t: "Spaced Repetition", kind: "Study · 592K installs", url: "https://github.com/st3v3nmw/obsidian-spaced-repetition", unit: "brain-outputs", plain: "Flashcards from your own notes." },
+        { t: "ReadItLater, Zotero Integration, Webpage HTML Export", kind: "Capture and publishing", url: "https://github.com/KosmosisDire/obsidian-webpage-export", plain: "Save pages for later reading, bring Zotero papers in, and export notes as web pages." }
+      ] },
+    { type: "tools", title: "Other second-brain projects and skill libraries", short: "Projects and skills",
+      intro: "Open-source implementations of the same pattern. Reading other people's page contracts and prompts is the fastest way to improve your own. Star count measures reach, not quality.",
+      items: [
+        { t: "claude-obsidian", who: "AgriciDaniel", kind: "16 skills, 3 subagents · 14.7K stars", url: "https://github.com/AgriciDaniel/claude-obsidian", unit: "brain-agents", plain: "A self-organizing vault on the Karpathy pattern with role presets: executive, builder, creator, researcher." },
+        { t: "karpathy-llm-wiki", who: "Astro-Han", kind: "1 skill · 2.2K stars", url: "https://github.com/Astro-Han/karpathy-llm-wiki", unit: "brain-concepts", plain: "One skill covering the whole ingest, compile, query, and lint loop." },
+        { t: "obsidian-claude-pkm", who: "ballred", kind: "13 skills, 4 subagents · 1.9K stars", url: "https://github.com/ballred/obsidian-claude-pkm", unit: "brain-agents", plain: "A complete starter kit." },
+        { t: "second-brain-starter", who: "coleam00", kind: "1 skill", url: "https://github.com/coleam00/second-brain-starter", unit: "brain-setup", plain: "Interviews you first, generates a build plan, then builds it from text files, Python, and an Obsidian vault." },
+        { t: "second-brain", who: "NicholasSpisak", kind: "4 skills, npm installer", url: "https://github.com/NicholasSpisak/second-brain", unit: "brain-concepts", plain: "Ingest, lint, and query skills, close to the original gist." },
+        { t: "obsidian-second-brain", who: "eugeniughelbur", kind: "47 commands", url: "https://github.com/eugeniughelbur/obsidian-second-brain", unit: "brain-agents", plain: "Ready commands across Claude, Codex, and Gemini, so you are not locked to one agent." },
+        { t: "llm-wiki", who: "micuintus", kind: "1 skill, no dependencies", url: "https://github.com/micuintus/llm-wiki", unit: "brain-concepts", plain: "Deliberately minimal: a good counterpoint to the big kits." },
+        { t: "anthropics/skills", who: "Anthropic", kind: "The reference for the format", url: "https://github.com/anthropics/skills", unit: "brain-agents", plain: "The official examples of the Agent Skills format (SKILL.md)." },
+        { t: "obra/superpowers", kind: "14 skills · 283K stars", url: "https://github.com/obra/superpowers", unit: "brain-agents", plain: "An agentic skills framework and development methodology." },
+        { t: "awesome-agent-skills and awesome-claude-code", kind: "Curated indexes", url: "https://github.com/VoltAgent/awesome-agent-skills", unit: "brain-agents", plain: "Indexes of 1,000+ community skills, and of commands, hooks, and workflows for Claude Code." }
+      ] },
+    { type: "tools", title: "Graph, RAG, and memory repositories", short: "Graph and memory repos",
+      intro: "The open-source projects behind Deep dive 1 and Unit 3.05. Stars as of September 2026.",
+      items: [
+        { t: "Graphify", kind: "116K stars", url: "https://github.com/Graphify-Labs/graphify", unit: "deep-graphs", plain: "Builds a graph from any folder." },
+        { t: "LightRAG", kind: "39K stars", url: "https://github.com/HKUDS/LightRAG", unit: "deep-graphs", plain: "Graph RAG with incremental updates and a graph-plus-vector index." },
+        { t: "microsoft/graphrag", kind: "36K stars", url: "https://github.com/microsoft/graphrag", unit: "deep-graphs", plain: "The reference GraphRAG implementation, now in maintenance mode: read it, do not build on it." },
+        { t: "nano-graphrag", kind: "4K stars", url: "https://github.com/gusye1234/nano-graphrag", unit: "deep-graphs", plain: "The same pipeline in small, readable code." },
+        { t: "HippoRAG (code)", kind: "4K stars", url: "https://github.com/OSU-NLP-Group/HippoRAG", unit: "brain-graphs", plain: "Multi-hop retrieval over a knowledge graph with personalized PageRank." },
+        { t: "Awesome-GraphRAG", kind: "2.6K stars", url: "https://github.com/DEEP-PolyU/Awesome-GraphRAG", unit: "deep-graphs", plain: "The landscape in one list." },
+        { t: "mem0", kind: "65K stars", url: "https://github.com/mem0ai/mem0", unit: "agents-context", plain: "A memory layer for agents." },
+        { t: "graphiti", kind: "31K stars", url: "https://github.com/getzep/graphiti", unit: "deep-graphs", plain: "Temporal knowledge graphs: every edge carries a validity window." },
+        { t: "cognee", kind: "31K stars", url: "https://github.com/topoteretes/cognee", unit: "deep-graphs", plain: "Graph plus vector memory in one self-hosted pipeline." },
+        { t: "awesome-mcp-servers", kind: "95K stars", url: "https://github.com/punkpeye/awesome-mcp-servers", unit: "deep-harness", plain: "An index of MCP servers. Read each server's tool descriptions before installing (Deep dive 3)." }
+      ] },
+    { type: "tools", title: "New in September and October 2026", short: "New releases",
+      intro: "Releases the source flagged as changing how you would build any of this, checked at their source on 1 November 2026. Expect some to age quickly.",
+      items: [
+        { t: "Basic Memory 1.0", kind: "Release · 4.4K stars · AGPL-3.0", url: "https://github.com/basicmachines-co/basic-memory/releases/tag/v1.0.0", unit: "brain-concepts", caution: NEWS, plain: "A local MCP server whose graph is plain markdown with wikilinks; it reads and writes Obsidian vaults." },
+        { t: "ai-memory 3.0", kind: "Release · 14.9K stars", url: "https://github.com/akitaonrails/ai-memory/releases/tag/v3.0.0", unit: "brain-agents", caution: NEWS, plain: "A git-backed wiki of markdown files fed by hooks from 20+ agents, now installable as a Claude Code plugin." },
+        { t: "agent-memory", kind: "4.3K stars", url: "https://github.com/tigerless-labs/agent-memory", unit: "agents-context", caution: NEWS, plain: "One markdown file per memory under a MEMORY.md index, with a search index you can delete and rebuild." },
+        { t: "Hindsight 1.0", kind: "Release · 57.7K stars", url: "https://github.com/vectorize-io/hindsight/releases/tag/v1.0.0", unit: "brain-retrieval", caution: NEWS, plain: "The database-backed alternative, with knowledge pages it can write out as markdown." },
+        { t: "LLM Wikis From First Principles", kind: "Workshop", url: "https://github.com/decodingai-magazine/llm-wiki-workshop", unit: "brain-concepts", caution: NEWS, plain: "A hands-on workshop in three exercises, from a basic raw/ to wiki/ setup to a wiki that learns from questions." },
+        { t: "LightRAG 1.5.7", kind: "Release", url: "https://github.com/HKUDS/LightRAG/releases/tag/v1.5.7", unit: "deep-graphs", caution: NEWS, plain: "Opt-in graph-first ingestion: build the graph with no embedding calls and add vectors later." },
+        { t: "Claude Code mods", kind: "New plugin part", url: "https://code.claude.com/docs/en/plugins/mods/overview", unit: "deep-harness", caution: NEWS, plain: "JavaScript or TypeScript handlers that watch or rewrite tool calls and prompts, add commands, and draw panes. Not sandboxed, so read one before you install it." },
+        { t: "claude plugin eval", kind: "Claude Code feature", url: "https://code.claude.com/docs/en/plugin-evals", unit: "deep-evals", caution: NEWS, plain: "Runs each test case with and without your plugin, scores the difference, and fails CI below a threshold." },
+        { t: "/skill-doctor", kind: "Claude Code feature", url: "https://code.claude.com/docs/en/skills#find-unused-skills", unit: "brain-agents", caution: NEWS, plain: "Reports what each loaded skill costs in context on every turn, and which ones never fire." },
+        { t: "AGENTS.md support in Claude Code", kind: "Claude Code feature", url: "https://code.claude.com/docs/en/memory#agents-md", unit: "agents-harness", caution: NEWS, plain: "Claude Code reads AGENTS.md when there is no CLAUDE.md (and a setting loads both), so one instruction file can serve several agents." },
+        { t: "When to fold subagents into your main agent loop", who: "Anthropic", kind: "Article", url: "https://claude.com/resources/articles/building-agents-when-to-fold-subagents-into-your-main-agent-loop", unit: "agents-context", caution: NEWS, plain: "The case that one loop with skills and progressively disclosed tools often matches a fleet of subagents, with a migration plan that starts from ten golden eval cases." },
+        { t: "Elephant-Goldfish Model", who: "Google", kind: "Plugin · 9.1K stars", url: "https://github.com/google/elephant-goldfish-model", unit: "deep-loop", caution: NEWS, plain: "Reviewers with no prior context check a spec: a critic in a clean context, packaged. Installs in Claude Code, Codex, and Antigravity." },
+        { t: "Harness²", who: "Google Research", kind: "21.9K stars", url: "https://github.com/google-research/harness2", unit: "deep-harness", caution: NEWS, plain: "Tunes the harness, not the weights: prompts, tools, and memory edited per task, with lessons kept." },
+        { t: "SoL-Pi", who: "NVIDIA", kind: "3.6K stars", url: "https://github.com/NVlabs/SoL-Pi", unit: "deep-harness", caution: NEWS, plain: "Four add-ons to the minimal Pi harness that keep its score with 45 to 49% less token traffic." },
+        { t: "Automating eval design and hillclimbing with Claude", who: "Anthropic", kind: "Engineering post", url: "https://claude.dev/blog/automating-eval-design-and-hillclimbing/", unit: "deep-evals", caution: NEWS, plain: "Two commands that build an eval in your codebase and improve against it, keeping a change only when both the training split and a held-out split improve. Read it with Hamel Husain's critique (hamel.dev)." },
+        { t: "OpenAI Decisions API", who: "OpenAI", kind: "API, generally available 22 October 2026", url: "https://developers.openai.com/api/docs/guides/decisions", unit: "deep-jev", caution: NEWS, plain: "Typed answers instead of text: the gate from Unit 2.03 as an API, compared with Jev and others as cheap judges in Hamel Husain's post." }
+      ] }
+  );
+})();

@@ -6,6 +6,16 @@
   var P = window.Portal;
   var SRC = "https://secondbrainos.dev/#/n/sec:";
 
+  /* Learn by level: Second Brain OS's own ordering, interleaving Routes 2 to 4 by difficulty. */
+  P.levels = [
+    { t: "Beginner", ids: ["agents-map", "agents-context", "brain-concepts", "brain-setup", "brain-ingest"],
+      d: "What an agent is, what it sees, and a second brain set up and fed. No AI background beyond Station 00 needed." },
+    { t: "Intermediate", ids: ["agents-loop", "agents-gate", "brain-structure", "brain-graphs", "brain-agents", "brain-retrieval", "brain-outputs", "brain-maintain", "brain-fix"],
+      d: "Loops and cheap decisions, then everything that keeps a second brain useful: structure, graphs, agents, asking, outputs, upkeep, and fixes." },
+    { t: "Advanced", ids: ["agents-harness", "agents-evals", "agents-production", "deep-graphs", "deep-jev", "deep-harness", "deep-loop", "deep-evals"],
+      d: "The harness, evals, and production, then the five deep dives." }
+  ];
+
   P.trackMaps = P.trackMaps || {};
   P.trackMaps.deep = {
     w: "compare", k: "Route map", title: "Which deep dive, after which unit",
